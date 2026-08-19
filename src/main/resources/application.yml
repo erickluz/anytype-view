@@ -1,0 +1,30 @@
+spring:
+  application:
+    name: anytype-view
+  datasource:
+    url: ${APP_DATABASE_URL:jdbc:sqlite:${user.home}/.anytype-view/anytype-view.sqlite}
+    driver-class-name: org.sqlite.JDBC
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+  mandatory-file-encoding: UTF-8
+  messages:
+    encoding: UTF-8
+  web:
+    resources:
+      cache:
+        period: 0
+
+server:
+  port: ${SERVER_PORT:8080}
+  servlet:
+    encoding:
+      charset: UTF-8
+      enabled: true
+      force: true
+
+anytype:
+  base-url: ${ANYTYPE_BASE_URL:http://127.0.0.1:31009}
+  version: ${ANYTYPE_VERSION:2025-11-08}
+  api-key: FDPcKzMwcJnQgIasHLBV0UqSC2VGHW/ToH8qGlUFS98=
+  space-name: ${ANYTYPE_SPACE_NAME:Evolucao Tecnica}

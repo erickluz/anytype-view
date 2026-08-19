@@ -1,0 +1,4 @@
+spring:
+  datasource:
+    url: jdbc:sqlite:target/test-data/anytype-view-test.sqlite
+    driver-class-name: org.sqlite.JDBC

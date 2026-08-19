@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Anytype View</title>
+    <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+<main class="shell">
+    <section class="header">
+        <div>
+            <h1>Anytype View</h1>
+            <p>Monitor local do espaco Evolucao Tecnica</p>
+        </div>
+        <button id="syncButton" type="button">Sincronizar</button>
+    </section>
+
+    <section class="status-bar">
+        <div>
+            <span>Sistema</span>
+            <strong id="healthStatus">Carregando</strong>
+        </div>
+        <div>
+            <span>Espaco</span>
+            <strong id="spaceName">Carregando</strong>
+        </div>
+        <div>
+            <span>API key</span>
+            <strong id="apiKeyStatus">Carregando</strong>
+        </div>
+    </section>
+
+    <section class="sync-panel">
+        <div>
+            <h2>Sincronizacao</h2>
+            <p id="syncMessage">Aguardando execucao.</p>
+        </div>
+    </section>
+
+    <section class="preview-note" id="previewNote">Carregando previa.</section>
+
+    <section class="summary-grid" id="summaryGrid"></section>
+
+    <section class="dashboard-grid">
+        <article class="panel panel-large">
+            <div class="panel-heading">
+                <h2>Ritmo semanal</h2>
+                <span>alteracoes inferidas</span>
+            </div>
+            <div class="activity-bars" id="activityBars"></div>
+        </article>
+
+        <article class="panel">
+            <div class="panel-heading">
+                <h2>Entendimento</h2>
+                <span>conceitos por nivel</span>
+            </div>
+            <div class="donut-wrap">
+                <div class="donut" id="understandingDonut"></div>
+                <div class="legend" id="understandingLegend"></div>
+            </div>
+        </article>
+
+        <article class="panel panel-large">
+            <div class="panel-heading">
+                <h2>Evolucao dos conceitos</h2>
+                <span>crescimento mensal</span>
+            </div>
+            <div class="trend" id="conceptTrend"></div>
+        </article>
+
+        <article class="panel">
+            <div class="panel-heading">
+                <h2>Checkpoints antigos</h2>
+                <span>prioridade de revisao</span>
+            </div>
+            <div class="checkpoint-list" id="checkpointList"></div>
+        </article>
+
+        <article class="panel panel-full">
+            <div class="panel-heading">
+                <h2>Progresso por tema</h2>
+                <span>volume, maturidade e revisao</span>
+            </div>
+            <div class="topic-table" id="topicTable"></div>
+        </article>
+    </section>
+</main>
+<script src="/app.js"></script>
+</body>
+</html>
