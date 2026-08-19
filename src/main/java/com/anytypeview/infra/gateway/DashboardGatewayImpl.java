@@ -60,6 +60,7 @@ public class DashboardGatewayImpl implements DashboardGateway {
             problemIndicators(objects, understanding),
             summary(objects),
             activity(),
+            activityHistory(),
             conceptTrend(),
             understanding,
             topics,
@@ -482,6 +483,37 @@ public class DashboardGatewayImpl implements DashboardGateway {
 
         return counts.entrySet().stream()
             .map(entry -> new DashboardDTO.ActivityPointDTO(entry.getKey().format(SHORT_DATE), entry.getValue()))
+            .toList();
+    }
+
+    private List<DashboardDTO.DailyActivityDTO> activityHistory() {
+        LocalDate today = LocalDate.now(DASHBOARD_ZONE);
+        LocalDate startDate = today.minusDays(364);
+        Map<LocalDate, Integer> counts = new LinkedHashMap<>();
+        for (LocalDate date = startDate; !date.isAfter(today); date = date.plusDays(1)) {
+            counts.put(date, 0);
+        }
+
+        jdbcTemplate.query(
+            """
+            select activity_date, object_count
+            from activity_day
+            where source = ? and activity_date between ? and ?
+            order by activity_date
+            """,
+            resultSet -> {
+                LocalDate date = LocalDate.parse(resultSet.getString("activity_date"));
+                if (counts.containsKey(date)) {
+                    counts.put(date, resultSet.getInt("object_count"));
+                }
+            },
+            "LAST_MODIFIED_DATE",
+            startDate.toString(),
+            today.toString()
+        );
+
+        return counts.entrySet().stream()
+            .map(entry -> new DashboardDTO.DailyActivityDTO(entry.getKey().toString(), entry.getValue()))
             .toList();
     }
 

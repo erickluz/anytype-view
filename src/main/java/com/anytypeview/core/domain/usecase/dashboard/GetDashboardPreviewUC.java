@@ -1,6 +1,7 @@
 package com.anytypeview.core.domain.usecase.dashboard;
 
 import com.anytypeview.core.dto.DashboardDTO;
+import java.time.LocalDate;
 import com.anytypeview.core.gateway.DashboardGateway;
 import java.util.List;
 import org.springframework.stereotype.Service;
@@ -43,6 +44,7 @@ public class GetDashboardPreviewUC {
                 new DashboardDTO.ActivityPointDTO("Sab", 1),
                 new DashboardDTO.ActivityPointDTO("Dom", 0)
             ),
+            activityHistoryPreview(),
             List.of(
                 new DashboardDTO.TrendPointDTO("Mar", 288),
                 new DashboardDTO.TrendPointDTO("Abr", 315),
@@ -70,5 +72,20 @@ public class GetDashboardPreviewUC {
                 new DashboardDTO.CheckpointDTO("System Design", "8 dias", "11/08", "Intermediario", 7)
             )
         );
+    }
+
+    private List<DashboardDTO.DailyActivityDTO> activityHistoryPreview() {
+        LocalDate today = LocalDate.now();
+        return java.util.stream.IntStream.rangeClosed(0, 364)
+            .mapToObj(index -> {
+                LocalDate date = today.minusDays(364L - index);
+                int weekday = date.getDayOfWeek().getValue();
+                int value = (index * 17 + weekday * 7) % 15;
+                if (weekday >= 6 || value < 5) {
+                    value = 0;
+                }
+                return new DashboardDTO.DailyActivityDTO(date.toString(), value);
+            })
+            .toList();
     }
 }

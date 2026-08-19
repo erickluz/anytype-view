@@ -92,10 +92,57 @@ function renderDashboard(dashboard) {
     renderProblemIndicators(dashboard.problemIndicators || []);
     renderSummary(dashboard.summary);
     renderBars('activityBars', dashboard.activity, '#2563eb');
+    renderActivityHistory(dashboard.activityHistory || []);
     renderBars('conceptTrend', dashboard.conceptTrend, '#0f766e');
     renderUnderstanding(dashboard.understanding);
     renderTopics(dashboard.topics);
     renderCheckpoints(dashboard.checkpoints);
+}
+
+function renderActivityHistory(points) {
+    const container = document.getElementById('activityHistory');
+    if (!points.length) {
+        container.innerHTML = '<p class="text-body-secondary mb-0">Ainda não há histórico de atividade.</p>';
+        return;
+    }
+
+    const values = points.map(point => point.value).filter(value => value > 0).sort((a, b) => a - b);
+    const levelFor = value => {
+        if (value === 0 || values.length === 0) return 0;
+        const percentile = values.indexOf(value) / values.length;
+        return Math.min(4, Math.floor(percentile * 4) + 1);
+    };
+    const firstDate = new Date(`${points[0].date}T00:00:00`);
+    const offset = firstDate.getDay();
+    const cells = [...Array(offset).fill(null), ...points];
+    const weeks = Array.from({ length: Math.ceil(cells.length / 7) }, (_, index) => cells.slice(index * 7, index * 7 + 7));
+    const monthLabels = [];
+    let previousMonth = -1;
+
+    const grid = weeks.map((week, weekIndex) => `<div class="contribution-week">${week.map(point => {
+        if (!point) return '<span class="contribution-day contribution-day-empty" aria-hidden="true"></span>';
+        const date = new Date(`${point.date}T00:00:00`);
+        const month = date.getMonth();
+        if (month !== previousMonth) {
+            monthLabels.push({ week: weekIndex, label: date.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '') });
+            previousMonth = month;
+        }
+        const label = date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+        const count = point.value;
+        return `<span class="contribution-day contribution-level-${levelFor(count)}" tabindex="0" data-tooltip="${label}: ${count} ${count === 1 ? 'alteração inferida' : 'alterações inferidas'}" aria-label="${label}: ${count} alterações inferidas"></span>`;
+    }).join('')}</div>`).join('');
+
+    const labels = monthLabels.map(item => `<span style="grid-column: ${item.week + 1}">${item.label}</span>`).join('');
+    container.innerHTML = `
+        <div class="contribution-scroll">
+            <div class="contribution-months">${labels}</div>
+            <div class="contribution-content">
+                <div class="contribution-weekdays" aria-hidden="true"><span></span><span>Seg</span><span></span><span>Qua</span><span></span><span>Sex</span><span></span></div>
+                <div class="contribution-grid">${grid}</div>
+            </div>
+            <div class="contribution-footer"><span>Menos</span><i class="contribution-day contribution-level-0"></i><i class="contribution-day contribution-level-1"></i><i class="contribution-day contribution-level-2"></i><i class="contribution-day contribution-level-3"></i><i class="contribution-day contribution-level-4"></i><span>Mais</span></div>
+        </div>
+    `;
 }
 
 function renderProblemIndicators(items) {

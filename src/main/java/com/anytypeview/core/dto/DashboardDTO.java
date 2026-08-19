@@ -8,6 +8,7 @@ public record DashboardDTO(
     List<ProblemIndicatorDTO> problemIndicators,
     List<SummaryCardDTO> summary,
     List<ActivityPointDTO> activity,
+    List<DailyActivityDTO> activityHistory,
     List<TrendPointDTO> conceptTrend,
     List<UnderstandingSliceDTO> understanding,
     List<TopicProgressDTO> topics,
@@ -20,6 +21,9 @@ public record DashboardDTO(
     }
 
     public record ActivityPointDTO(String label, int value) {
+    }
+
+    public record DailyActivityDTO(String date, int value) {
     }
 
     public record TrendPointDTO(String label, int value) {
