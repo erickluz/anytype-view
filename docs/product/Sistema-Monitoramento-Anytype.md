@@ -88,7 +88,8 @@ Não existe apontamento manual de horas ou tempo de estudo.
 
 ## Métricas iniciais
 
-...
+As métricas iniciais consolidadas para o MVP estão documentadas em
+[decisoes-mvp.md](decisoes-mvp.md).
 
 ## Fora do escopo do MVP
 
