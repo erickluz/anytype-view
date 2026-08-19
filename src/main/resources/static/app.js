@@ -8,6 +8,9 @@ async function getJson(url, options) {
     return payload;
 }
 
+const PAGE_IDS = ['dashboard', 'checkpoints-page', 'topics-page', 'concepts-page', 'system-status'];
+const knowledgeViews = {};
+
 async function loadStatus() {
     const [health, anytype, dashboard] = await Promise.all([
         getJson('/api/health'),
@@ -37,6 +40,11 @@ async function runSync() {
             showSyncToast('Snapshot salvo', message.textContent, 'success');
             const dashboard = await getJson('/api/dashboard/preview');
             renderDashboard(dashboard);
+            Object.keys(knowledgeViews).forEach(key => delete knowledgeViews[key]);
+            const currentPage = window.location.hash.replace('#', '');
+            if (['checkpoints-page', 'topics-page', 'concepts-page'].includes(currentPage)) {
+                loadKnowledgeView(currentPage);
+            }
         } else {
             message.textContent = `${result.status}: ${result.message}`;
             showSyncToast('Sincronização', message.textContent, result.status === 'SCHEMA_INVALID' ? 'warning' : 'info');
@@ -51,13 +59,16 @@ async function runSync() {
 }
 
 function showPage(pageId) {
-    const targetPage = pageId === 'system-status' ? 'system-status' : 'dashboard';
+    const targetPage = PAGE_IDS.includes(pageId) ? pageId : 'dashboard';
     document.querySelectorAll('.page-section').forEach(section => {
         section.classList.toggle('d-none', section.id !== targetPage);
     });
     document.querySelectorAll('[data-page-link]').forEach(link => {
         link.classList.toggle('active', link.dataset.pageLink === targetPage);
     });
+    if (['checkpoints-page', 'topics-page', 'concepts-page'].includes(targetPage)) {
+        loadKnowledgeView(targetPage);
+    }
 }
 
 function showSyncToast(title, body, tone) {
@@ -78,6 +89,7 @@ function showSyncToast(title, body, tone) {
 
 function renderDashboard(dashboard) {
     document.getElementById('previewNote').textContent = dashboard.note;
+    renderProblemIndicators(dashboard.problemIndicators || []);
     renderSummary(dashboard.summary);
     renderBars('activityBars', dashboard.activity, '#2563eb');
     renderBars('conceptTrend', dashboard.conceptTrend, '#0f766e');
@@ -86,11 +98,32 @@ function renderDashboard(dashboard) {
     renderCheckpoints(dashboard.checkpoints);
 }
 
+function renderProblemIndicators(items) {
+    const container = document.getElementById('problemIndicators');
+    const currentReadings = items.slice(0, 3);
+    const volatility = items[3];
+    container.innerHTML = currentReadings.map(item => `
+        <article class="current-reading current-reading-${item.tone}">
+            <div class="d-flex align-items-baseline justify-content-between gap-3">
+                <span class="problem-label">${item.label}</span>
+                <strong class="current-reading-value">${item.value}</strong>
+            </div>
+            <p class="problem-context mb-0">${item.context}</p>
+        </article>
+    `).join('');
+
+    const volatilityContainer = document.getElementById('volatilityIndicator');
+    volatilityContainer.innerHTML = volatility ? `
+        <span class="volatility-label">${volatility.label}: <strong>${volatility.value}</strong></span>
+        <span>${volatility.context}</span>
+    ` : '';
+}
+
 function renderSummary(items) {
     const container = document.getElementById('summaryGrid');
-    container.innerHTML = items.map((item, index) => `
-        <div class="col-12 col-sm-6 col-xl-3">
-            <article class="card summary-card summary-card-tone-${(index % 4) + 1}">
+    container.innerHTML = items.map(item => `
+        <div class="col-6">
+            <article class="card summary-card">
                 <div class="card-body">
                     <span class="summary-caption">${item.caption}</span>
                     <strong class="summary-value">${item.value}</strong>
@@ -141,22 +174,44 @@ function renderUnderstanding(items) {
 function renderTopics(topics) {
     document.getElementById('topicTable').innerHTML = topics.map(topic => `
         <div class="topic-row">
-            <div>
+            <div class="topic-name">
                 <strong>${topic.name}</strong>
                 <span class="topic-meta">${topic.concepts} conceitos</span>
             </div>
-            <div>
+            <div class="topic-primary-progress">
+                <div class="d-flex justify-content-between gap-2">
+                    <span class="topic-progress-label">Maturidade</span>
+                    <strong>${topic.progressPercent}%</strong>
+                </div>
                 <div class="progress">
                     <div class="progress-fill" style="width: ${topic.progressPercent}%;"></div>
                 </div>
-                <span class="topic-meta">${topic.progressPercent}% de maturidade percebida</span>
+                <span class="topic-meta">${topic.matureConcepts} de ${topic.concepts} em nível intermediário ou forte</span>
             </div>
-            <div class="topic-meta">
-                ${topic.lowUnderstanding} em nivel baixo<br>
-                ${topic.daysSinceCheckpoint} dias sem checkpoint
+            <div class="topic-details">
+                ${renderTopicDetail('Iniciado', topic.initiatedConcepts, topic.initiatedPercent)}
+                ${renderTopicDetail('Forte', topic.strongConcepts, topic.strongPercent)}
+                ${renderTopicDetail('Com checkpoint', topic.checkpointCoveredConcepts, topic.checkpointCoveragePercent)}
+                <span class="topic-meta">${topic.lowUnderstanding} em nível baixo · ${checkpointRecency(topic.daysSinceCheckpoint)}</span>
             </div>
         </div>
     `).join('');
+}
+
+function renderTopicDetail(label, count, percent) {
+    return `
+        <span>${label} <strong>${percent}%</strong> <small>(${count})</small></span>
+    `;
+}
+
+function checkpointRecency(daysSinceCheckpoint) {
+    if (daysSinceCheckpoint < 0) {
+        return 'sem checkpoint encontrado';
+    }
+    if (daysSinceCheckpoint === 0) {
+        return 'checkpoint trabalhado hoje';
+    }
+    return `${daysSinceCheckpoint} dias desde checkpoint`;
 }
 
 function renderCheckpoints(checkpoints) {
@@ -164,11 +219,199 @@ function renderCheckpoints(checkpoints) {
         <div class="checkpoint-item">
             <div>
                 <strong>${checkpoint.topic}</strong>
-                <span>${checkpoint.age} sem revisao · ${checkpoint.perceivedLevel}</span>
+                <span>Trabalhado em ${checkpoint.workedAt} · ${checkpoint.perceivedLevel} · há ${checkpoint.age}</span>
             </div>
-            <strong>${checkpoint.sellability}/10</strong>
+            <div class="checkpoint-score">
+                <span>Vendabilidade</span>
+                <strong>${checkpoint.sellability}/10</strong>
+            </div>
         </div>
     `).join('');
+}
+
+async function loadKnowledgeView(pageId) {
+    if (knowledgeViews[pageId]) {
+        renderKnowledgeView(pageId, knowledgeViews[pageId]);
+        return;
+    }
+
+    const endpoint = {
+        'checkpoints-page': '/api/dashboard/checkpoints',
+        'topics-page': '/api/dashboard/topics',
+        'concepts-page': '/api/dashboard/concepts'
+    }[pageId];
+    try {
+        const view = await getJson(endpoint);
+        knowledgeViews[pageId] = view;
+        renderKnowledgeView(pageId, view);
+    } catch (error) {
+        const note = document.getElementById({
+            'checkpoints-page': 'checkpointsNote',
+            'topics-page': 'topicsNote',
+            'concepts-page': 'conceptsNote'
+        }[pageId]);
+        note.textContent = `Erro ao carregar dados: ${error.message}`;
+        showSyncToast('Erro ao carregar dados', error.message, 'danger');
+    }
+}
+
+function renderKnowledgeView(pageId, view) {
+    if (pageId === 'checkpoints-page') {
+        document.getElementById('checkpointsNote').textContent = view.note;
+        renderDetailMetrics('checkpointMetrics', view.metrics);
+        renderCheckpointDetails(view.items);
+    }
+    if (pageId === 'topics-page') {
+        document.getElementById('topicsNote').textContent = view.note;
+        renderDetailMetrics('topicMetrics', view.metrics);
+        renderTopicDetails(view.items);
+    }
+    if (pageId === 'concepts-page') {
+        document.getElementById('conceptsNote').textContent = view.note;
+        renderDetailMetrics('conceptMetrics', view.metrics);
+        renderConceptDetails(view.items);
+    }
+}
+
+function renderDetailMetrics(elementId, metrics) {
+    document.getElementById(elementId).innerHTML = metrics.map(metric => `
+        <div class="col-6 col-md-3">
+            <article class="card detail-metric">
+                <div class="card-body">
+                    <span>${metric.label}</span>
+                    <strong>${metric.value}</strong>
+                    <small>${metric.context}</small>
+                </div>
+            </article>
+        </div>
+    `).join('');
+}
+
+function renderCheckpointDetails(items) {
+    const query = normalizeText(document.getElementById('checkpointSearch').value);
+    const filter = document.getElementById('checkpointFilter').value;
+    const filtered = items.filter(item => {
+        const matchesQuery = !query || normalizeText(`${item.name} ${item.topic} ${item.status}`).includes(query);
+        const matchesFilter = filter === 'all'
+            || (filter === 'gaps' && item.hasGaps)
+            || (filter === 'no-application' && !item.hasPracticalApplication);
+        return matchesQuery && matchesFilter;
+    });
+    document.getElementById('checkpointResultCount').textContent = `${filtered.length} de ${items.length} checkpoints`;
+    document.getElementById('checkpointDetailList').innerHTML = filtered.map(item => `
+        <article class="detail-row checkpoint-detail-row">
+            <div class="detail-main">
+                <strong>${item.topic}</strong>
+                <span>${item.name}</span>
+            </div>
+            <div class="detail-secondary">Trabalhado em ${item.workedAt} · ${activityAge(item.daysSinceWorked)}</div>
+            <div class="detail-tags">
+                <span class="insight-badge">${item.perceivedLevel}</span>
+                <span class="insight-badge">Vendabilidade ${item.sellability}/10</span>
+                <span class="insight-badge">${item.connectedConcepts} conceitos ligados</span>
+                ${item.hasGaps ? '<span class="insight-badge insight-badge-warning">Com lacunas</span>' : ''}
+                ${item.hasPracticalApplication ? '<span class="insight-badge insight-badge-success">Aplicação prática</span>' : ''}
+            </div>
+        </article>
+    `).join('') || emptyListMessage('Nenhum checkpoint corresponde aos filtros atuais.');
+}
+
+function renderTopicDetails(items) {
+    const query = normalizeText(document.getElementById('topicSearch').value);
+    const filter = document.getElementById('topicFilter').value;
+    const filtered = items.filter(item => {
+        const matchesQuery = !query || normalizeText(item.name).includes(query);
+        const matchesFilter = filter === 'all'
+            || (filter === 'low' && item.lowUnderstanding > 0)
+            || (filter === 'no-checkpoint' && item.concepts > 0 && item.checkpointCount === 0)
+            || (filter === 'subtopic' && normalizeText(item.type) === 'subtema');
+        return matchesQuery && matchesFilter;
+    });
+    document.getElementById('topicResultCount').textContent = `${filtered.length} de ${items.length} temas e subtemas`;
+    document.getElementById('topicDetailList').innerHTML = filtered.map(item => `
+        <article class="detail-row topic-detail-row">
+            <div class="detail-main">
+                <strong>${item.name}</strong>
+                <span>${item.type}${item.priority === null ? '' : ` · prioridade ${item.priority}`}</span>
+            </div>
+            <div class="detail-progress">
+                <div class="d-flex justify-content-between gap-2">
+                    <span>Maturidade</span><strong>${item.maturityPercent}%</strong>
+                </div>
+                <div class="progress"><div class="progress-fill" style="width: ${item.maturityPercent}%;"></div></div>
+                <small>${item.matureConcepts} de ${item.concepts} em nível intermediário ou forte</small>
+            </div>
+            <div class="detail-tags">
+                <span class="insight-badge">${item.concepts} conceitos</span>
+                <span class="insight-badge">${item.lowUnderstanding} em nível baixo</span>
+                <span class="insight-badge">${item.checkpointCount} checkpoints</span>
+                <span class="insight-badge">${item.subtopics} subtemas</span>
+                <span class="insight-badge">${checkpointRecency(item.daysSinceCheckpoint)}</span>
+            </div>
+        </article>
+    `).join('') || emptyListMessage('Nenhum tema corresponde aos filtros atuais.');
+}
+
+function renderConceptDetails(items) {
+    const query = normalizeText(document.getElementById('conceptSearch').value);
+    const understandingFilter = document.getElementById('conceptUnderstandingFilter').value;
+    const checkpointFilter = document.getElementById('conceptCheckpointFilter').value;
+    const filtered = items.filter(item => {
+        const searchText = `${item.name} ${item.topics.join(' ')}`;
+        const matchesQuery = !query || normalizeText(searchText).includes(query);
+        const low = isLowUnderstanding(item.understanding);
+        const mature = !low;
+        const matchesUnderstanding = understandingFilter === 'all'
+            || (understandingFilter === 'low' && low)
+            || (understandingFilter === 'mature' && mature);
+        const matchesCheckpoint = checkpointFilter === 'all'
+            || (checkpointFilter === 'with' && item.hasCheckpoint)
+            || (checkpointFilter === 'without' && !item.hasCheckpoint);
+        return matchesQuery && matchesUnderstanding && matchesCheckpoint;
+    });
+    document.getElementById('conceptResultCount').textContent = `${filtered.length} de ${items.length} conceitos`;
+    document.getElementById('conceptDetailList').innerHTML = filtered.map(item => `
+        <article class="detail-row concept-detail-row">
+            <div class="detail-main">
+                <strong>${item.name}</strong>
+                <span>${item.topics.length ? item.topics.join(' · ') : 'Sem tema associado'}</span>
+            </div>
+            <div class="detail-tags">
+                <span class="insight-badge ${isLowUnderstanding(item.understanding) ? 'insight-badge-warning' : 'insight-badge-success'}">${item.understanding}</span>
+                <span class="insight-badge">Veredito ${item.verdict}</span>
+                ${item.priority === null ? '' : `<span class="insight-badge">Prioridade ${item.priority}</span>`}
+                <span class="insight-badge">${item.hasCheckpoint ? 'Com checkpoint' : 'Sem checkpoint'}</span>
+            </div>
+            <div class="detail-secondary">Alterado em ${item.lastModifiedAt} · ${activityAge(item.daysSinceActivity)}</div>
+        </article>
+    `).join('') || emptyListMessage('Nenhum conceito corresponde aos filtros atuais.');
+}
+
+function emptyListMessage(message) {
+    return `<p class="detail-empty mb-0">${message}</p>`;
+}
+
+function normalizeText(value) {
+    return (value || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .trim()
+        .toLowerCase();
+}
+
+function isLowUnderstanding(value) {
+    const normalized = normalizeText(value);
+    return normalized.includes('desconhecido') || normalized.includes('basico');
+}
+
+function activityAge(days) {
+    if (days < 0) {
+        return 'sem data de atividade';
+    }
+    if (days === 0) {
+        return 'trabalhado hoje';
+    }
+    return `há ${days} dias`;
 }
 
 document.getElementById('syncButton').addEventListener('click', runSync);
@@ -180,18 +423,34 @@ document.querySelectorAll('[data-page-link]').forEach(link => {
         showPage(pageId);
     });
 });
-document.querySelectorAll('[data-dashboard-target]').forEach(link => {
-    link.addEventListener('click', event => {
-        event.preventDefault();
-        const targetId = event.currentTarget.dataset.dashboardTarget;
-        history.replaceState(null, '', `#${targetId}`);
-        showPage('dashboard');
-        document.getElementById(targetId).scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+[
+    ['checkpointSearch', 'input', () => renderCheckpointDetails(knowledgeViews['checkpoints-page'].items)],
+    ['checkpointFilter', 'change', () => renderCheckpointDetails(knowledgeViews['checkpoints-page'].items)],
+    ['topicSearch', 'input', () => renderTopicDetails(knowledgeViews['topics-page'].items)],
+    ['topicFilter', 'change', () => renderTopicDetails(knowledgeViews['topics-page'].items)],
+    ['conceptSearch', 'input', () => renderConceptDetails(knowledgeViews['concepts-page'].items)],
+    ['conceptUnderstandingFilter', 'change', () => renderConceptDetails(knowledgeViews['concepts-page'].items)],
+    ['conceptCheckpointFilter', 'change', () => renderConceptDetails(knowledgeViews['concepts-page'].items)]
+].forEach(([elementId, eventName, handler]) => {
+    document.getElementById(elementId).addEventListener(eventName, () => {
+        const pageId = elementId.startsWith('checkpoint')
+            ? 'checkpoints-page'
+            : elementId.startsWith('topic')
+                ? 'topics-page'
+                : 'concepts-page';
+        if (knowledgeViews[pageId]) {
+            handler();
+        }
     });
 });
 
 const initialHash = window.location.hash.replace('#', '');
-showPage(initialHash === 'system-status' ? 'system-status' : 'dashboard');
+showPage(PAGE_IDS.includes(initialHash) ? initialHash : 'dashboard');
+window.addEventListener('hashchange', () => {
+    const pageId = window.location.hash.replace('#', '');
+    showPage(PAGE_IDS.includes(pageId) ? pageId : 'dashboard');
+});
 loadStatus().catch(error => {
     document.getElementById('healthStatus').textContent = 'Erro';
     document.getElementById('syncMessage').textContent = `Erro ao carregar status: ${error.message}`;

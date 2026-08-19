@@ -26,5 +26,5 @@ server:
 anytype:
   base-url: ${ANYTYPE_BASE_URL:http://127.0.0.1:31009}
   version: ${ANYTYPE_VERSION:2025-11-08}
-  api-key: FDPcKzMwcJnQgIasHLBV0UqSC2VGHW/ToH8qGlUFS98=
+  api-key: ${ANYTYPE_API_KEY:}
   space-name: ${ANYTYPE_SPACE_NAME:Evolucao Tecnica}

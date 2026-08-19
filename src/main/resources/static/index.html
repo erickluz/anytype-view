@@ -22,9 +22,10 @@
     <ul class="sidebar-nav" data-coreui="navigation" data-simplebar>
         <li class="nav-title">Monitoramento</li>
         <li class="nav-item"><a class="nav-link active" data-page-link="dashboard" href="#dashboard">Dashboard</a></li>
+        <li class="nav-item"><a class="nav-link" data-page-link="checkpoints-page" href="#checkpoints-page">Checkpoints</a></li>
+        <li class="nav-item"><a class="nav-link" data-page-link="topics-page" href="#topics-page">Temas</a></li>
+        <li class="nav-item"><a class="nav-link" data-page-link="concepts-page" href="#concepts-page">Conceitos</a></li>
         <li class="nav-item"><a class="nav-link" data-page-link="system-status" href="#system-status">Status do sistema</a></li>
-        <li class="nav-item"><a class="nav-link" data-dashboard-target="topics" href="#topics">Temas</a></li>
-        <li class="nav-item"><a class="nav-link" data-dashboard-target="checkpoints" href="#checkpoints">Checkpoints</a></li>
     </ul>
     <div class="sidebar-footer border-top d-none d-md-flex">
         <button class="sidebar-toggler" type="button" data-coreui-toggle="unfoldable"></button>
@@ -48,24 +49,57 @@
     </header>
 
     <main class="body flex-grow-1">
-        <div class="container-lg px-4 page-section" id="dashboard">
+        <div class="container-xl px-4 page-section" id="dashboard">
             <div class="d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-3 mb-4">
                 <div>
                     <p class="text-body-secondary mb-1">Monitor local do espaço Evolução Técnica</p>
-                    <h1 class="h2 mb-0">Dashboard de evolução técnica</h1>
+                    <h1 class="h2 mb-0">Painel de evolução técnica</h1>
                 </div>
             </div>
 
-            <div class="dashboard-note mb-4" id="previewNote">Carregando dados.</div>
+            <div class="dashboard-note mb-3" id="previewNote">Carregando dados.</div>
 
-            <div class="row g-4 mb-4" id="summaryGrid"></div>
+            <section class="row g-4 mb-4 dashboard-primary-row">
+                <div class="col-12 col-xl-7" id="checkpoints">
+                    <div class="card h-100 resume-card">
+                        <div class="card-header d-flex align-items-center justify-content-between">
+                            <strong>Retome de onde parou</strong>
+                            <span class="small text-body-secondary">últimos checkpoints trabalhados</span>
+                        </div>
+                        <div class="card-body">
+                            <div class="checkpoint-list" id="checkpointList"></div>
+                        </div>
+                    </div>
+                </div>
 
-            <div class="row g-4">
+                <div class="col-12 col-xl-5">
+                    <div class="card h-100 current-reading-card">
+                        <div class="card-header">
+                            <strong>Leitura atual</strong>
+                        </div>
+                        <div class="card-body" id="problemIndicators"></div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="mb-4" id="topics">
+                <div class="card">
+                    <div class="card-header d-flex align-items-center justify-content-between">
+                        <strong>Progresso por tema</strong>
+                        <span class="small text-body-secondary">temas com mais maturidade construída</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="topic-table" id="topicTable"></div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="row g-4 mb-4">
                 <div class="col-12 col-xl-8">
                     <div class="card h-100">
                         <div class="card-header d-flex align-items-center justify-content-between">
-                            <strong>Ritmo semanal</strong>
-                            <span class="small text-body-secondary">alterações inferidas</span>
+                            <strong>Ritmo e continuidade</strong>
+                            <span class="small text-body-secondary">alterações inferidas nos últimos 7 dias</span>
                         </div>
                         <div class="card-body">
                             <div class="activity-bars" id="activityBars"></div>
@@ -87,46 +121,120 @@
                         </div>
                     </div>
                 </div>
+            </section>
 
-                <div class="col-12 col-xl-8">
-                    <div class="card h-100">
-                        <div class="card-header d-flex align-items-center justify-content-between">
-                            <strong>Evolução dos conceitos</strong>
-                            <span class="small text-body-secondary">crescimento por snapshot</span>
-                        </div>
-                        <div class="card-body">
-                            <div class="trend" id="conceptTrend"></div>
+            <section class="mt-4">
+                <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-2 mb-3">
+                    <div>
+                        <h2 class="h5 mb-1">Mapa em perspectiva</h2>
+                        <p class="small text-body-secondary mb-0">inventário e crescimento observados nos snapshots</p>
+                    </div>
+                    <div class="volatility-indicator" id="volatilityIndicator"></div>
+                </div>
+                <div class="row g-4">
+                    <div class="col-12 col-xl-4">
+                        <div class="row g-3" id="summaryGrid"></div>
+                    </div>
+                    <div class="col-12 col-xl-8">
+                        <div class="card">
+                            <div class="card-header d-flex align-items-center justify-content-between">
+                                <strong>Crescimento do mapa</strong>
+                                <span class="small text-body-secondary">total de objetos por snapshot</span>
+                            </div>
+                            <div class="card-body">
+                                <div class="trend" id="conceptTrend"></div>
+                            </div>
                         </div>
                     </div>
                 </div>
+            </section>
+        </div>
 
-                <div class="col-12 col-xl-4" id="checkpoints">
-                    <div class="card h-100">
-                        <div class="card-header d-flex align-items-center justify-content-between">
-                            <strong>Checkpoints antigos</strong>
-                            <span class="small text-body-secondary">prioridade de revisão</span>
-                        </div>
-                        <div class="card-body">
-                            <div class="checkpoint-list" id="checkpointList"></div>
-                        </div>
+        <div class="container-xl px-4 page-section d-none" id="checkpoints-page">
+            <div class="mb-4">
+                <p class="text-body-secondary mb-1">Consolidação e retomada</p>
+                <h1 class="h2 mb-1">Checkpoints trabalhados</h1>
+                <div class="dashboard-note" id="checkpointsNote">Carregando dados.</div>
+            </div>
+            <div class="row g-3 mb-4" id="checkpointMetrics"></div>
+            <div class="card">
+                <div class="card-header detail-toolbar">
+                    <strong>Todos os checkpoints</strong>
+                    <div class="detail-filter-group">
+                        <input id="checkpointSearch" class="form-control form-control-sm" type="search" placeholder="Buscar checkpoint" aria-label="Buscar checkpoint">
+                        <select id="checkpointFilter" class="form-select form-select-sm" aria-label="Filtrar checkpoints">
+                            <option value="all">Todos</option>
+                            <option value="gaps">Com lacunas</option>
+                            <option value="no-application">Sem aplicação prática</option>
+                        </select>
                     </div>
                 </div>
-
-                <div class="col-12" id="topics">
-                    <div class="card">
-                        <div class="card-header d-flex align-items-center justify-content-between">
-                            <strong>Progresso por tema</strong>
-                            <span class="small text-body-secondary">volume, maturidade e revisão</span>
-                        </div>
-                        <div class="card-body">
-                            <div class="topic-table" id="topicTable"></div>
-                        </div>
-                    </div>
+                <div class="card-body pt-0">
+                    <div class="detail-result-count" id="checkpointResultCount"></div>
+                    <div class="detail-list" id="checkpointDetailList"></div>
                 </div>
             </div>
         </div>
 
-        <div class="container-lg px-4 page-section d-none" id="system-status">
+        <div class="container-xl px-4 page-section d-none" id="topics-page">
+            <div class="mb-4">
+                <p class="text-body-secondary mb-1">Estrutura e progresso do mapa</p>
+                <h1 class="h2 mb-1">Temas e subtemas</h1>
+                <div class="dashboard-note" id="topicsNote">Carregando dados.</div>
+            </div>
+            <div class="row g-3 mb-4" id="topicMetrics"></div>
+            <div class="card">
+                <div class="card-header detail-toolbar">
+                    <strong>Todos os temas</strong>
+                    <div class="detail-filter-group">
+                        <input id="topicSearch" class="form-control form-control-sm" type="search" placeholder="Buscar tema" aria-label="Buscar tema">
+                        <select id="topicFilter" class="form-select form-select-sm" aria-label="Filtrar temas">
+                            <option value="all">Todos</option>
+                            <option value="low">Com nível baixo</option>
+                            <option value="no-checkpoint">Sem checkpoint</option>
+                            <option value="subtopic">Somente subtemas</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="card-body pt-0">
+                    <div class="detail-result-count" id="topicResultCount"></div>
+                    <div class="detail-list" id="topicDetailList"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="container-xl px-4 page-section d-none" id="concepts-page">
+            <div class="mb-4">
+                <p class="text-body-secondary mb-1">Estado atual das unidades de conhecimento</p>
+                <h1 class="h2 mb-1">Conceitos</h1>
+                <div class="dashboard-note" id="conceptsNote">Carregando dados.</div>
+            </div>
+            <div class="row g-3 mb-4" id="conceptMetrics"></div>
+            <div class="card">
+                <div class="card-header detail-toolbar">
+                    <strong>Todos os conceitos</strong>
+                    <div class="detail-filter-group detail-filter-group-concepts">
+                        <input id="conceptSearch" class="form-control form-control-sm" type="search" placeholder="Buscar conceito ou tema" aria-label="Buscar conceito ou tema">
+                        <select id="conceptUnderstandingFilter" class="form-select form-select-sm" aria-label="Filtrar por entendimento">
+                            <option value="all">Todos os níveis</option>
+                            <option value="low">Nível baixo</option>
+                            <option value="mature">Intermediário ou forte</option>
+                        </select>
+                        <select id="conceptCheckpointFilter" class="form-select form-select-sm" aria-label="Filtrar por checkpoint">
+                            <option value="all">Com ou sem checkpoint</option>
+                            <option value="with">Com checkpoint</option>
+                            <option value="without">Sem checkpoint</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="card-body pt-0">
+                    <div class="detail-result-count" id="conceptResultCount"></div>
+                    <div class="detail-list" id="conceptDetailList"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="container-xl px-4 page-section d-none" id="system-status">
             <div class="mb-4">
                 <p class="text-body-secondary mb-1">Operação local</p>
                 <h1 class="h2 mb-0">Status do sistema</h1>

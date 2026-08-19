@@ -23,6 +23,12 @@ public class GetDashboardPreviewUC {
             "PREVIEW",
             "Previa baseada na modelagem documentada. Os dados reais entram apos o snapshot.",
             List.of(
+                new DashboardDTO.ProblemIndicatorDTO("Progresso atual", "62%", "256 de 414 conceitos acima do nivel baixo", "success"),
+                new DashboardDTO.ProblemIndicatorDTO("Ritmo recente", "5/14 dias", "34 objetos alterados nos ultimos 7 dias", "warning"),
+                new DashboardDTO.ProblemIndicatorDTO("Interrupcao atual", "2 dias", "Ultima atividade inferida em 17/08", "success"),
+                new DashboardDTO.ProblemIndicatorDTO("Volatilidade", "41", "conceitos/checkpoints alterados nos ultimos 30 dias", "warning")
+            ),
+            List.of(
                 new DashboardDTO.SummaryCardDTO("Temas", "59", "+4 no mes", "Organizacao do mapa"),
                 new DashboardDTO.SummaryCardDTO("Conceitos", "414", "+27 no mes", "Unidades de conhecimento"),
                 new DashboardDTO.SummaryCardDTO("Checkpoints", "10", "3 atrasados", "Revisoes estruturadas"),
@@ -52,16 +58,16 @@ public class GetDashboardPreviewUC {
                 new DashboardDTO.UnderstandingSliceDTO("Forte", 36, "#059669")
             ),
             List.of(
-                new DashboardDTO.TopicProgressDTO("Spring", 64, 72, 8, 4),
-                new DashboardDTO.TopicProgressDTO("Arquitetura", 58, 65, 12, 9),
-                new DashboardDTO.TopicProgressDTO("IA aplicada", 42, 44, 19, 3),
-                new DashboardDTO.TopicProgressDTO("Cloud Native", 36, 51, 14, 11),
-                new DashboardDTO.TopicProgressDTO("Observabilidade", 31, 68, 5, 6)
+                new DashboardDTO.TopicProgressDTO("Spring", 64, 46, 72, 58, 91, 12, 18, 41, 64, 8, 4),
+                new DashboardDTO.TopicProgressDTO("Arquitetura", 58, 38, 65, 49, 84, 8, 14, 34, 59, 12, 9),
+                new DashboardDTO.TopicProgressDTO("IA aplicada", 42, 18, 44, 28, 67, 4, 10, 16, 38, 19, 3),
+                new DashboardDTO.TopicProgressDTO("Cloud Native", 36, 18, 51, 26, 72, 3, 8, 15, 42, 14, 11),
+                new DashboardDTO.TopicProgressDTO("Observabilidade", 31, 21, 68, 27, 87, 6, 19, 19, 61, 5, 6)
             ),
             List.of(
-                new DashboardDTO.CheckpointDTO("Arquitetura Reativa", "42 dias", "Intermediario", 8),
-                new DashboardDTO.CheckpointDTO("Cloud Native", "35 dias", "Basico", 6),
-                new DashboardDTO.CheckpointDTO("System Design", "28 dias", "Intermediario", 7)
+                new DashboardDTO.CheckpointDTO("Arquitetura Reativa", "2 dias", "17/08", "Intermediario", 8),
+                new DashboardDTO.CheckpointDTO("Cloud Native", "5 dias", "14/08", "Basico", 6),
+                new DashboardDTO.CheckpointDTO("System Design", "8 dias", "11/08", "Intermediario", 7)
             )
         );
     }

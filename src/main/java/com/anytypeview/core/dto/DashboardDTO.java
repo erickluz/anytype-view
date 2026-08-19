@@ -5,6 +5,7 @@ import java.util.List;
 public record DashboardDTO(
     String mode,
     String note,
+    List<ProblemIndicatorDTO> problemIndicators,
     List<SummaryCardDTO> summary,
     List<ActivityPointDTO> activity,
     List<TrendPointDTO> conceptTrend,
@@ -12,6 +13,9 @@ public record DashboardDTO(
     List<TopicProgressDTO> topics,
     List<CheckpointDTO> checkpoints
 ) {
+    public record ProblemIndicatorDTO(String label, String value, String context, String tone) {
+    }
+
     public record SummaryCardDTO(String label, String value, String delta, String caption) {
     }
 
@@ -27,7 +31,14 @@ public record DashboardDTO(
     public record TopicProgressDTO(
         String name,
         int concepts,
+        int matureConcepts,
         int progressPercent,
+        int initiatedConcepts,
+        int initiatedPercent,
+        int strongConcepts,
+        int strongPercent,
+        int checkpointCoveredConcepts,
+        int checkpointCoveragePercent,
         int lowUnderstanding,
         int daysSinceCheckpoint
     ) {
@@ -36,6 +47,7 @@ public record DashboardDTO(
     public record CheckpointDTO(
         String topic,
         String age,
+        String workedAt,
         String perceivedLevel,
         int sellability
     ) {
