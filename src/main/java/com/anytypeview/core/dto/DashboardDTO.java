@@ -10,6 +10,7 @@ public record DashboardDTO(
     List<ActivityPointDTO> activity,
     List<DailyActivityDTO> activityHistory,
     List<TrendPointDTO> conceptTrend,
+    List<TrendPointDTO> conceptTrendDaily,
     List<UnderstandingSliceDTO> understanding,
     List<TopicProgressDTO> topics,
     List<CheckpointDTO> checkpoints
@@ -44,7 +45,13 @@ public record DashboardDTO(
         int checkpointCoveredConcepts,
         int checkpointCoveragePercent,
         int lowUnderstanding,
-        int daysSinceCheckpoint
+        int daysSinceCheckpoint,
+        int remainingToIntermediate,
+        Integer estimatedCompletionDays,
+        Integer estimatedCompletionWeeks,
+        boolean estimatedFromGeneralRate,
+        boolean estimatedFromLastModification,
+        boolean focused
     ) {
     }
 

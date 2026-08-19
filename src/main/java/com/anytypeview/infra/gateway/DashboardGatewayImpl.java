@@ -29,6 +29,7 @@ public class DashboardGatewayImpl implements DashboardGateway {
 
     private static final ZoneId DASHBOARD_ZONE = ZoneId.of("America/Sao_Paulo");
     private static final DateTimeFormatter SHORT_DATE = DateTimeFormatter.ofPattern("dd/MM");
+    private static final DateTimeFormatter DAILY_TREND_DATE = DateTimeFormatter.ofPattern("dd/MM/yy");
 
     private final JdbcTemplate jdbcTemplate;
     private final ObjectMapper objectMapper;
@@ -52,7 +53,8 @@ public class DashboardGatewayImpl implements DashboardGateway {
         }
         List<DashboardDTO.UnderstandingSliceDTO> understanding = understanding(objects);
         Map<String, LocalDate> latestCheckpointByTopic = latestCheckpointByTopic(objects, namesByObjectId);
-        List<DashboardDTO.TopicProgressDTO> topics = topics(objects, namesByObjectId, latestCheckpointByTopic);
+        Map<String, TopicForecast> forecastsByTopic = topicForecasts(objects, namesByObjectId);
+        List<DashboardDTO.TopicProgressDTO> topics = topics(objects, namesByObjectId, latestCheckpointByTopic, forecastsByTopic);
 
         return Optional.of(new DashboardDTO(
             "REAL",
@@ -61,7 +63,8 @@ public class DashboardGatewayImpl implements DashboardGateway {
             summary(objects),
             activity(),
             activityHistory(),
-            conceptTrend(),
+            conceptTrend(objects),
+            conceptTrendDaily(objects),
             understanding,
             topics,
             recentCheckpoints(objects, namesByObjectId)
@@ -298,6 +301,7 @@ public class DashboardGatewayImpl implements DashboardGateway {
                 anytype_type_key,
                 anytype_type_name,
                 object_name,
+                created_date,
                 last_modified_date,
                 relevant_properties_json
             from snapshot_object
@@ -314,6 +318,7 @@ public class DashboardGatewayImpl implements DashboardGateway {
             resultSet.getString("anytype_type_key"),
             resultSet.getString("anytype_type_name"),
             resultSet.getString("object_name"),
+            resultSet.getString("created_date"),
             resultSet.getString("last_modified_date"),
             resultSet.getString("relevant_properties_json")
         );
@@ -517,19 +522,69 @@ public class DashboardGatewayImpl implements DashboardGateway {
             .toList();
     }
 
-    private List<DashboardDTO.TrendPointDTO> conceptTrend() {
-        return jdbcTemplate.query(
-            """
-            select snapshot_date, object_count
-            from daily_snapshot
-            order by snapshot_date desc
-            limit 6
-            """,
-            (resultSet, rowNum) -> new DashboardDTO.TrendPointDTO(
-                LocalDate.parse(resultSet.getString("snapshot_date")).format(SHORT_DATE),
-                resultSet.getInt("object_count")
-            )
-        ).stream().sorted(Comparator.comparing(DashboardDTO.TrendPointDTO::label)).toList();
+    private List<DashboardDTO.TrendPointDTO> conceptTrend(List<SnapshotObjectRow> objects) {
+        Map<LocalDate, Integer> createdByDate = createdByDate(objects);
+        if (createdByDate.isEmpty()) {
+            return List.of();
+        }
+
+        LocalDate firstMonth = createdByDate.keySet().stream()
+            .min(LocalDate::compareTo)
+            .orElseThrow()
+            .withDayOfMonth(1);
+        LocalDate currentMonth = LocalDate.now(DASHBOARD_ZONE).withDayOfMonth(1);
+        Map<LocalDate, Integer> createdByMonth = new LinkedHashMap<>();
+        for (Map.Entry<LocalDate, Integer> entry : createdByDate.entrySet()) {
+            createdByMonth.merge(entry.getKey().withDayOfMonth(1), entry.getValue(), Integer::sum);
+        }
+
+        return cumulativeTrend(
+            createdByMonth,
+            firstMonth,
+            currentMonth,
+            DateTimeFormatter.ofPattern("MM/yyyy"),
+            true
+        );
+    }
+
+    private List<DashboardDTO.TrendPointDTO> conceptTrendDaily(List<SnapshotObjectRow> objects) {
+        Map<LocalDate, Integer> createdByDate = createdByDate(objects);
+        if (createdByDate.isEmpty()) {
+            return List.of();
+        }
+
+        LocalDate firstDate = createdByDate.keySet().stream().min(LocalDate::compareTo).orElseThrow();
+        return cumulativeTrend(createdByDate, firstDate, LocalDate.now(DASHBOARD_ZONE), DAILY_TREND_DATE, false);
+    }
+
+    private Map<LocalDate, Integer> createdByDate(List<SnapshotObjectRow> objects) {
+        Map<LocalDate, Integer> createdByDate = new LinkedHashMap<>();
+        for (SnapshotObjectRow object : objects) {
+            createdDate(object).ifPresent(date -> {
+                createdByDate.merge(date, 1, Integer::sum);
+            });
+        }
+        return createdByDate;
+    }
+
+    private List<DashboardDTO.TrendPointDTO> cumulativeTrend(
+        Map<LocalDate, Integer> createdByDate,
+        LocalDate startDate,
+        LocalDate endDate,
+        DateTimeFormatter labelFormat,
+        boolean monthly
+    ) {
+        List<DashboardDTO.TrendPointDTO> trend = new ArrayList<>();
+        int accumulated = 0;
+        for (LocalDate date = startDate; !date.isAfter(endDate); date = monthly ? date.plusMonths(1) : date.plusDays(1)) {
+            accumulated += createdByDate.getOrDefault(date, 0);
+            trend.add(new DashboardDTO.TrendPointDTO(date.format(labelFormat), accumulated));
+        }
+        return trend;
+    }
+
+    private Optional<LocalDate> createdDate(SnapshotObjectRow object) {
+        return parseAnytypeDate(object.createdDate()).or(() -> dateProperty(object, "Created date"));
     }
 
     private List<DashboardDTO.UnderstandingSliceDTO> understanding(List<SnapshotObjectRow> objects) {
@@ -567,7 +622,8 @@ public class DashboardGatewayImpl implements DashboardGateway {
     private List<DashboardDTO.TopicProgressDTO> topics(
         List<SnapshotObjectRow> objects,
         Map<String, String> namesByObjectId,
-        Map<String, LocalDate> latestCheckpointByTopic
+        Map<String, LocalDate> latestCheckpointByTopic,
+        Map<String, TopicForecast> forecastsByTopic
     ) {
         Map<String, TopicAccumulator> topics = new HashMap<>();
         for (SnapshotObjectRow object : objects) {
@@ -594,8 +650,8 @@ public class DashboardGatewayImpl implements DashboardGateway {
         LocalDate today = LocalDate.now(DASHBOARD_ZONE);
         return topics.entrySet().stream()
             .sorted((left, right) -> {
-                DashboardDTO.TopicProgressDTO leftTopic = left.getValue().toDTO(left.getKey(), latestCheckpointByTopic.get(left.getKey()), today);
-                DashboardDTO.TopicProgressDTO rightTopic = right.getValue().toDTO(right.getKey(), latestCheckpointByTopic.get(right.getKey()), today);
+                DashboardDTO.TopicProgressDTO leftTopic = left.getValue().toDTO(left.getKey(), latestCheckpointByTopic.get(left.getKey()), today, forecastsByTopic.get(left.getKey()));
+                DashboardDTO.TopicProgressDTO rightTopic = right.getValue().toDTO(right.getKey(), latestCheckpointByTopic.get(right.getKey()), today, forecastsByTopic.get(right.getKey()));
                 int byMature = Integer.compare(right.getValue().mature, left.getValue().mature);
                 if (byMature != 0) {
                     return byMature;
@@ -611,8 +667,171 @@ public class DashboardGatewayImpl implements DashboardGateway {
                 return Integer.compare(rightTopic.concepts(), leftTopic.concepts());
             })
             .limit(6)
-            .map(entry -> entry.getValue().toDTO(entry.getKey(), latestCheckpointByTopic.get(entry.getKey()), today))
+            .map(entry -> entry.getValue().toDTO(entry.getKey(), latestCheckpointByTopic.get(entry.getKey()), today, forecastsByTopic.get(entry.getKey())))
             .toList();
+    }
+
+    private Map<String, TopicForecast> topicForecasts(
+        List<SnapshotObjectRow> objects,
+        Map<String, String> namesByObjectId
+    ) {
+        Map<String, List<String>> topicsByConceptId = new HashMap<>();
+        Map<String, Integer> remainingByTopic = new HashMap<>();
+        for (SnapshotObjectRow object : objects) {
+            if (!"Conceito".equals(normalizedTypeName(object.anytypeTypeName()))) {
+                continue;
+            }
+            List<String> topicNames = objectPropertyIds(object, "Categoria").stream()
+                .map(id -> namesByObjectId.getOrDefault(id, "Sem tema"))
+                .toList();
+            if (topicNames.isEmpty()) {
+                topicNames = List.of("Sem tema");
+            }
+            topicsByConceptId.put(object.anytypeObjectId(), topicNames);
+            if (understandingRank(selectPropertyName(object, "Entendimento").orElse("")) < 2) {
+                topicNames.forEach(topic -> remainingByTopic.merge(topic, 1, Integer::sum));
+            }
+        }
+
+        java.util.TreeMap<LocalDate, Map<String, Integer>> ranksByDate = snapshotUnderstandingRanks();
+        InferredCompletionRate inferredCompletionRate = inferredCompletionRate(objects);
+        Map<String, Integer> advancementsByTopic = new HashMap<>();
+        Map<String, Integer> recentAdvancementsByTopic = new HashMap<>();
+        Map<String, Integer> previousRanks = null;
+        int totalAdvancements = 0;
+        LocalDate focusStart = LocalDate.now(DASHBOARD_ZONE).minusDays(13);
+        for (Map.Entry<LocalDate, Map<String, Integer>> entry : ranksByDate.entrySet()) {
+            if (previousRanks != null) {
+                for (Map.Entry<String, Integer> rank : entry.getValue().entrySet()) {
+                    Integer previousRank = previousRanks.get(rank.getKey());
+                    if (previousRank != null && rank.getValue() > previousRank) {
+                        totalAdvancements++;
+                        for (String topic : topicsByConceptId.getOrDefault(rank.getKey(), List.of())) {
+                            advancementsByTopic.merge(topic, 1, Integer::sum);
+                            if (!entry.getKey().isBefore(focusStart)) {
+                                recentAdvancementsByTopic.merge(topic, 1, Integer::sum);
+                            }
+                        }
+                    }
+                }
+            }
+            previousRanks = entry.getValue();
+        }
+
+        int observedDays = ranksByDate.size() < 2 ? 0
+            : Math.toIntExact(ChronoUnit.DAYS.between(ranksByDate.firstKey(), ranksByDate.lastKey()));
+        String focusedTopic = recentAdvancementsByTopic.entrySet().stream()
+            .max(Map.Entry.comparingByValue())
+            .filter(entry -> entry.getValue() > 0)
+            .map(Map.Entry::getKey)
+            .orElse(null);
+        Map<String, TopicForecast> forecasts = new HashMap<>();
+        for (Map.Entry<String, Integer> entry : remainingByTopic.entrySet()) {
+            int advancements = advancementsByTopic.getOrDefault(entry.getKey(), 0);
+            Integer estimatedDays = null;
+            Integer estimatedWeeks = null;
+            boolean estimatedFromGeneralRate = false;
+            boolean estimatedFromLastModification = false;
+            int rateAdvancements = advancements;
+            if (observedDays >= 7 && rateAdvancements == 0 && totalAdvancements > 0) {
+                rateAdvancements = totalAdvancements;
+                estimatedFromGeneralRate = true;
+            }
+            if (observedDays >= 7 && rateAdvancements > 0) {
+                estimatedDays = (int) Math.ceil((entry.getValue() * (double) observedDays) / rateAdvancements);
+                estimatedWeeks = (int) Math.ceil(estimatedDays / 7.0);
+            }
+            if (estimatedDays == null && inferredCompletionRate.dailyRate() > 0) {
+                estimatedDays = (int) Math.ceil(entry.getValue() / inferredCompletionRate.dailyRate());
+                estimatedWeeks = (int) Math.ceil(estimatedDays / 7.0);
+                estimatedFromLastModification = true;
+            }
+            forecasts.put(entry.getKey(), new TopicForecast(
+                entry.getValue(),
+                estimatedDays,
+                estimatedWeeks,
+                estimatedFromGeneralRate,
+                estimatedFromLastModification,
+                entry.getKey().equals(focusedTopic)
+            ));
+        }
+        return forecasts;
+    }
+
+    private InferredCompletionRate inferredCompletionRate(List<SnapshotObjectRow> objects) {
+        List<LocalDate> inferredCompletionDates = new ArrayList<>();
+        for (SnapshotObjectRow object : objects) {
+            if (!"Conceito".equals(normalizedTypeName(object.anytypeTypeName()))) {
+                continue;
+            }
+            if (understandingRank(selectPropertyName(object, "Entendimento").orElse("")) >= 2) {
+                parseAnytypeDate(object.lastModifiedDate()).ifPresent(inferredCompletionDates::add);
+            }
+        }
+        if (inferredCompletionDates.isEmpty()) {
+            return new InferredCompletionRate(0);
+        }
+        inferredCompletionDates.sort(LocalDate::compareTo);
+        long activeDays = 1;
+        LocalDate previousDate = inferredCompletionDates.getFirst();
+        for (LocalDate date : inferredCompletionDates.subList(1, inferredCompletionDates.size())) {
+            long gap = ChronoUnit.DAYS.between(previousDate, date);
+            activeDays += Math.min(Math.max(gap, 0), 7);
+            previousDate = date;
+        }
+        long currentGap = ChronoUnit.DAYS.between(previousDate, LocalDate.now(DASHBOARD_ZONE));
+        activeDays += Math.min(Math.max(currentGap, 0), 7);
+        return new InferredCompletionRate(inferredCompletionDates.size() / (double) activeDays);
+    }
+
+    private java.util.TreeMap<LocalDate, Map<String, Integer>> snapshotUnderstandingRanks() {
+        java.util.TreeMap<LocalDate, Map<String, Integer>> ranksByDate = new java.util.TreeMap<>();
+        org.springframework.jdbc.core.RowCallbackHandler rowHandler = resultSet -> ranksByDate
+            .computeIfAbsent(LocalDate.parse(resultSet.getString("snapshot_date")), ignored -> new HashMap<>())
+            .put(resultSet.getString("anytype_object_id"), understandingRankFromProperties(resultSet.getString("relevant_properties_json")));
+        jdbcTemplate.query(
+            """
+            select daily_snapshot.snapshot_date, snapshot_object.anytype_object_id, snapshot_object.relevant_properties_json
+            from daily_snapshot
+            join snapshot_object on snapshot_object.daily_snapshot_id = daily_snapshot.id
+            where snapshot_object.anytype_type_name = ? and daily_snapshot.snapshot_date >= ?
+            order by daily_snapshot.snapshot_date
+            """,
+            rowHandler,
+            "Conceito",
+            LocalDate.now(DASHBOARD_ZONE).minusDays(27).toString()
+        );
+        return ranksByDate;
+    }
+
+    private int understandingRankFromProperties(String propertiesJson) {
+        try {
+            JsonNode properties = objectMapper.readTree(propertiesJson);
+            if (properties.isArray()) {
+                for (JsonNode property : properties) {
+                    if ("entendimento".equals(normalizeName(property.path("name").asText("")))) {
+                        return understandingRank(property.path("select").path("name").asText(""));
+                    }
+                }
+            }
+        } catch (Exception exception) {
+            return 0;
+        }
+        return 0;
+    }
+
+    private int understandingRank(String value) {
+        String normalized = normalizeName(value);
+        if (normalized.contains("forte") || normalized.contains("avancado")) {
+            return 3;
+        }
+        if (normalized.contains("intermediario")) {
+            return 2;
+        }
+        if (normalized.contains("basico")) {
+            return 1;
+        }
+        return 0;
     }
 
     private Map<String, LocalDate> latestCheckpointByTopic(
@@ -813,6 +1032,7 @@ public class DashboardGatewayImpl implements DashboardGateway {
         String anytypeTypeKey,
         String anytypeTypeName,
         String objectName,
+        String createdDate,
         String lastModifiedDate,
         String relevantPropertiesJson
     ) {
@@ -920,7 +1140,7 @@ public class DashboardGatewayImpl implements DashboardGateway {
             }
         }
 
-        DashboardDTO.TopicProgressDTO toDTO(String name, LocalDate latestCheckpointDate, LocalDate today) {
+        DashboardDTO.TopicProgressDTO toDTO(String name, LocalDate latestCheckpointDate, LocalDate today, TopicForecast forecast) {
             int maturityPercent = percent(mature);
             int daysSinceCheckpoint = latestCheckpointDate == null
                 ? -1
@@ -937,12 +1157,31 @@ public class DashboardGatewayImpl implements DashboardGateway {
                 checkpointCovered,
                 percent(checkpointCovered),
                 lowUnderstanding,
-                daysSinceCheckpoint
+                daysSinceCheckpoint,
+                forecast == null ? 0 : forecast.remainingToIntermediate(),
+                forecast == null ? null : forecast.estimatedCompletionDays(),
+                forecast == null ? null : forecast.estimatedCompletionWeeks(),
+                forecast != null && forecast.estimatedFromGeneralRate(),
+                forecast != null && forecast.estimatedFromLastModification(),
+                forecast != null && forecast.focused()
             );
         }
 
         private int percent(int value) {
             return concepts == 0 ? 0 : Math.round((value * 100f) / concepts);
         }
+    }
+
+    private record TopicForecast(
+        int remainingToIntermediate,
+        Integer estimatedCompletionDays,
+        Integer estimatedCompletionWeeks,
+        boolean estimatedFromGeneralRate,
+        boolean estimatedFromLastModification,
+        boolean focused
+    ) {
+    }
+
+    private record InferredCompletionRate(double dailyRate) {
     }
 }

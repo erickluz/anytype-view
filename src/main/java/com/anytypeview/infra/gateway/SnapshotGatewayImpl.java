@@ -70,10 +70,11 @@ public class SnapshotGatewayImpl implements SnapshotGateway {
                     anytype_type_name,
                     object_name,
                     archived,
+                    created_date,
                     last_modified_date,
                     relevant_properties_hash,
                     relevant_properties_json
-                ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 UUID.randomUUID().toString(),
                 snapshotId,
@@ -83,6 +84,7 @@ public class SnapshotGatewayImpl implements SnapshotGateway {
                 object.anytypeTypeName(),
                 object.objectName(),
                 object.archived() ? 1 : 0,
+                object.createdDate(),
                 object.lastModifiedDate(),
                 object.relevantPropertiesHash(),
                 object.relevantPropertiesJson()

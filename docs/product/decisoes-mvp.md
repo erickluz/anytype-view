@@ -72,6 +72,7 @@ O histórico mínimo pode conter:
 - tipo do objeto;
 - nome do objeto;
 - status de arquivamento;
+- `created_date`;
 - `last_modified_date`;
 - hash das propriedades relevantes;
 - propriedades relevantes para métricas, em formato normalizado ou JSON reduzido.
@@ -118,6 +119,8 @@ alterado = last_modified_date mudou ou hash das propriedades relevantes mudou
 A atividade retroativa pode ser inferida por `last_modified_date`. Exemplo: se o sistema rodar hoje e encontrar um objeto com `last_modified_date` de três dias atrás, pode registrar atividade inferida naquela data.
 
 Essa inferência não equivale a um snapshot real daquele dia. Ela indica apenas que houve alteração em um objeto naquela data.
+
+O crescimento acumulado do mapa pode ser inferido por `created_date`, contando em cada mês os objetos relevantes criados até o seu fim. Essa série deve ser identificada como inferida: ela não recupera objetos removidos antes da primeira sincronização nem o momento em que um objeto já existente passou a integrar um tema.
 
 ## Identificação de Tipos e Propriedades
 
@@ -217,6 +220,10 @@ As métricas iniciais devem responder aos problemas de progresso, ritmo, interru
 - distribuição de `Entendimento` por tema;
 - temas sem checkpoint recente;
 - temas com maior quantidade de conceitos em níveis baixos de entendimento.
+- tema em foco, identificado pelos avanços recentes de `Entendimento`;
+- estimativa de conclusão em dias e semanas para atingir `Intermediário`, baseada na média de avanços observados nos snapshots.
+- quando não houver histórico de snapshots suficiente, estimativa geral inferida por `last_modified_date` de conceitos já em `Intermediário` ou `Forte`.
+- ao calcular a taxa inferida, intervalos sem atividade acima de sete dias devem ser limitados a sete dias, para que pausas longas não reduzam artificialmente o ritmo estimado.
 
 ### Checkpoints
 
@@ -274,4 +281,3 @@ Como a API key será cadastrada manualmente, o fluxo `POST /v1/auth/challenges` 
 15. Criar dashboard simples.
 16. Adicionar sincronização manual.
 17. Adicionar sincronização automática.
-

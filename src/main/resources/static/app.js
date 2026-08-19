@@ -10,6 +10,7 @@ async function getJson(url, options) {
 
 const PAGE_IDS = ['dashboard', 'checkpoints-page', 'topics-page', 'concepts-page', 'system-status'];
 const knowledgeViews = {};
+let growthTrend = { month: [], day: [] };
 
 async function loadStatus() {
     const [health, anytype, dashboard] = await Promise.all([
@@ -93,10 +94,20 @@ function renderDashboard(dashboard) {
     renderSummary(dashboard.summary);
     renderBars('activityBars', dashboard.activity, '#2563eb');
     renderActivityHistory(dashboard.activityHistory || []);
-    renderBars('conceptTrend', dashboard.conceptTrend, '#0f766e');
+    growthTrend = {
+        month: dashboard.conceptTrend || [],
+        day: dashboard.conceptTrendDaily || []
+    };
+    document.getElementById('growthGranularity').value = 'month';
+    renderGrowthTrend();
     renderUnderstanding(dashboard.understanding);
     renderTopics(dashboard.topics);
     renderCheckpoints(dashboard.checkpoints);
+}
+
+function renderGrowthTrend() {
+    const granularity = document.getElementById('growthGranularity').value;
+    renderBars('conceptTrend', growthTrend[granularity], '#0f766e');
 }
 
 function renderActivityHistory(points) {
@@ -185,8 +196,12 @@ function renderSummary(items) {
 }
 
 function renderBars(elementId, points, color) {
-    const max = Math.max(...points.map(point => point.value), 1);
     const container = document.getElementById(elementId);
+    if (!points.length) {
+        container.innerHTML = '<p class="text-body-secondary mb-0">Não há datas de criação disponíveis para reconstruir o crescimento.</p>';
+        return;
+    }
+    const max = Math.max(...points.map(point => point.value), 1);
     container.innerHTML = points.map(point => {
         const height = Math.max((point.value / max) * 170, 8);
         return `
@@ -223,7 +238,7 @@ function renderTopics(topics) {
         <div class="topic-row">
             <div class="topic-name">
                 <strong>${topic.name}</strong>
-                <span class="topic-meta">${topic.concepts} conceitos</span>
+                <span class="topic-meta">${topic.concepts} conceitos${topic.focused ? ' · tema em foco' : ''}</span>
             </div>
             <div class="topic-primary-progress">
                 <div class="d-flex justify-content-between gap-2">
@@ -240,6 +255,7 @@ function renderTopics(topics) {
                 ${renderTopicDetail('Forte', topic.strongConcepts, topic.strongPercent)}
                 ${renderTopicDetail('Com checkpoint', topic.checkpointCoveredConcepts, topic.checkpointCoveragePercent)}
                 <span class="topic-meta">${topic.lowUnderstanding} em nível baixo · ${checkpointRecency(topic.daysSinceCheckpoint)}</span>
+                <span class="topic-meta">${topic.remainingToIntermediate} restantes para intermediário · ${completionEstimate(topic)}</span>
             </div>
         </div>
     `).join('');
@@ -249,6 +265,19 @@ function renderTopicDetail(label, count, percent) {
     return `
         <span>${label} <strong>${percent}%</strong> <small>(${count})</small></span>
     `;
+}
+
+function completionEstimate(topic) {
+    if (topic.remainingToIntermediate === 0) {
+        return 'meta intermediário concluída';
+    }
+    if (topic.estimatedCompletionDays === null || topic.estimatedCompletionWeeks === null) {
+        return 'estimativa: histórico insuficiente';
+    }
+    const basis = topic.estimatedFromLastModification
+        ? ' pelo ritmo inferido por última alteração'
+        : topic.estimatedFromGeneralRate ? ' pelo ritmo geral' : ' pelo ritmo do tema';
+    return `estimativa: ${topic.estimatedCompletionDays} dias (~${topic.estimatedCompletionWeeks} semanas)${basis}`;
 }
 
 function checkpointRecency(daysSinceCheckpoint) {
@@ -462,6 +491,7 @@ function activityAge(days) {
 }
 
 document.getElementById('syncButton').addEventListener('click', runSync);
+document.getElementById('growthGranularity').addEventListener('change', renderGrowthTrend);
 document.querySelectorAll('[data-page-link]').forEach(link => {
     link.addEventListener('click', event => {
         event.preventDefault();

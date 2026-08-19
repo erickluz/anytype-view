@@ -7,6 +7,7 @@ public record AnytypeObjectSnapshotDTO(
     String anytypeTypeName,
     String objectName,
     boolean archived,
+    String createdDate,
     String lastModifiedDate,
     String relevantPropertiesHash,
     String relevantPropertiesJson

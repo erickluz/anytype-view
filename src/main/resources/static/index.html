@@ -139,7 +139,7 @@
                 <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-2 mb-3">
                     <div>
                         <h2 class="h5 mb-1">Mapa em perspectiva</h2>
-                        <p class="small text-body-secondary mb-0">inventário e crescimento observados nos snapshots</p>
+                        <p class="small text-body-secondary mb-0">inventário atual e crescimento inferido pela criação dos objetos</p>
                     </div>
                     <div class="volatility-indicator" id="volatilityIndicator"></div>
                 </div>
@@ -150,8 +150,17 @@
                     <div class="col-12 col-xl-8">
                         <div class="card">
                             <div class="card-header d-flex align-items-center justify-content-between">
-                                <strong>Crescimento do mapa</strong>
-                                <span class="small text-body-secondary">total de objetos por snapshot</span>
+                                <div>
+                                    <strong class="d-block">Crescimento do mapa</strong>
+                                    <span class="small text-body-secondary">total acumulado, inferido por data de criação</span>
+                                </div>
+                                <label class="small text-body-secondary d-flex align-items-center gap-2" for="growthGranularity">
+                                    Visualizar por
+                                    <select id="growthGranularity" class="form-select form-select-sm">
+                                        <option value="month" selected>Mês</option>
+                                        <option value="day">Dia</option>
+                                    </select>
+                                </label>
                             </div>
                             <div class="card-body">
                                 <div class="trend" id="conceptTrend"></div>

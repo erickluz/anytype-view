@@ -192,20 +192,21 @@ public class AnytypeGatewayImpl implements AnytypeGateway {
             type.path("name").asText(null),
             object.path("name").asText(""),
             object.path("archived").asBoolean(false),
-            findLastModifiedDate(object.path("properties")),
+            findDate(object.path("properties"), "created_date", "created date"),
+            findDate(object.path("properties"), "last_modified_date", "last modified date"),
             sha256(propertiesJson),
             propertiesJson
         );
     }
 
-    private String findLastModifiedDate(JsonNode properties) {
+    private String findDate(JsonNode properties, String expectedKey, String expectedName) {
         if (!properties.isArray()) {
             return null;
         }
         for (JsonNode property : properties) {
             String key = property.path("key").asText("");
             String name = property.path("name").asText("");
-            if ("last_modified_date".equals(key) || "last modified date".equals(normalizeName(name))) {
+            if (expectedKey.equals(key) || expectedName.equals(normalizeName(name))) {
                 return property.path("date").asText(null);
             }
         }
