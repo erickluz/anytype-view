@@ -1,92 +1,199 @@
 <!doctype html>
+<!-- CoreUI Free Bootstrap Admin Template v5.6.0, MIT License. See /vendor/coreui/LICENSE. -->
 <html lang="pt-BR">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#ffffff">
     <title>Anytype View</title>
+    <link rel="stylesheet" href="/vendor/coreui/simplebar/css/simplebar.css">
+    <link rel="stylesheet" href="/vendor/coreui/css/style.min.css">
     <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
-<main class="shell">
-    <section class="header">
-        <div>
-            <h1>Anytype View</h1>
-            <p>Monitor local do espaco Evolucao Tecnica</p>
+<div class="sidebar sidebar-dark sidebar-fixed border-end" id="sidebar">
+    <div class="sidebar-header border-bottom">
+        <div class="sidebar-brand">
+            <span class="brand-mark">AV</span>
+            <span class="brand-name">Anytype View</span>
         </div>
-        <button id="syncButton" type="button">Sincronizar</button>
-    </section>
+        <button class="btn-close d-lg-none" type="button" data-coreui-theme="dark" aria-label="Fechar menu" data-coreui-toggle="sidebar" data-coreui-target="#sidebar"></button>
+    </div>
+    <ul class="sidebar-nav" data-coreui="navigation" data-simplebar>
+        <li class="nav-title">Monitoramento</li>
+        <li class="nav-item"><a class="nav-link active" data-page-link="dashboard" href="#dashboard">Dashboard</a></li>
+        <li class="nav-item"><a class="nav-link" data-page-link="system-status" href="#system-status">Status do sistema</a></li>
+        <li class="nav-item"><a class="nav-link" data-dashboard-target="topics" href="#topics">Temas</a></li>
+        <li class="nav-item"><a class="nav-link" data-dashboard-target="checkpoints" href="#checkpoints">Checkpoints</a></li>
+    </ul>
+    <div class="sidebar-footer border-top d-none d-md-flex">
+        <button class="sidebar-toggler" type="button" data-coreui-toggle="unfoldable"></button>
+    </div>
+</div>
 
-    <section class="status-bar">
-        <div>
-            <span>Sistema</span>
-            <strong id="healthStatus">Carregando</strong>
+<div class="wrapper d-flex flex-column min-vh-100">
+    <header class="header header-sticky p-0 mb-4">
+        <div class="container-fluid border-bottom px-4">
+            <button class="header-toggler" type="button" data-coreui-toggle="sidebar" data-coreui-target="#sidebar" aria-label="Abrir menu">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="header-nav ms-auto align-items-center gap-3">
+                <button id="syncButton" class="btn btn-outline-secondary btn-sm sync-button" type="button">Sincronizar</button>
+                <div class="nav-item py-3">
+                    <span class="text-body-secondary">Espaço</span>
+                    <strong id="spaceName" class="ms-2">Carregando</strong>
+                </div>
+            </div>
         </div>
-        <div>
-            <span>Espaco</span>
-            <strong id="spaceName">Carregando</strong>
+    </header>
+
+    <main class="body flex-grow-1">
+        <div class="container-lg px-4 page-section" id="dashboard">
+            <div class="d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-3 mb-4">
+                <div>
+                    <p class="text-body-secondary mb-1">Monitor local do espaço Evolução Técnica</p>
+                    <h1 class="h2 mb-0">Dashboard de evolução técnica</h1>
+                </div>
+            </div>
+
+            <div class="dashboard-note mb-4" id="previewNote">Carregando dados.</div>
+
+            <div class="row g-4 mb-4" id="summaryGrid"></div>
+
+            <div class="row g-4">
+                <div class="col-12 col-xl-8">
+                    <div class="card h-100">
+                        <div class="card-header d-flex align-items-center justify-content-between">
+                            <strong>Ritmo semanal</strong>
+                            <span class="small text-body-secondary">alterações inferidas</span>
+                        </div>
+                        <div class="card-body">
+                            <div class="activity-bars" id="activityBars"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-12 col-xl-4">
+                    <div class="card h-100">
+                        <div class="card-header d-flex align-items-center justify-content-between">
+                            <strong>Entendimento</strong>
+                            <span class="small text-body-secondary">conceitos por nível</span>
+                        </div>
+                        <div class="card-body">
+                            <div class="donut-wrap">
+                                <div class="donut" id="understandingDonut"></div>
+                                <div class="legend" id="understandingLegend"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-12 col-xl-8">
+                    <div class="card h-100">
+                        <div class="card-header d-flex align-items-center justify-content-between">
+                            <strong>Evolução dos conceitos</strong>
+                            <span class="small text-body-secondary">crescimento por snapshot</span>
+                        </div>
+                        <div class="card-body">
+                            <div class="trend" id="conceptTrend"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-12 col-xl-4" id="checkpoints">
+                    <div class="card h-100">
+                        <div class="card-header d-flex align-items-center justify-content-between">
+                            <strong>Checkpoints antigos</strong>
+                            <span class="small text-body-secondary">prioridade de revisão</span>
+                        </div>
+                        <div class="card-body">
+                            <div class="checkpoint-list" id="checkpointList"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-12" id="topics">
+                    <div class="card">
+                        <div class="card-header d-flex align-items-center justify-content-between">
+                            <strong>Progresso por tema</strong>
+                            <span class="small text-body-secondary">volume, maturidade e revisão</span>
+                        </div>
+                        <div class="card-body">
+                            <div class="topic-table" id="topicTable"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
-        <div>
-            <span>API key</span>
-            <strong id="apiKeyStatus">Carregando</strong>
+
+        <div class="container-lg px-4 page-section d-none" id="system-status">
+            <div class="mb-4">
+                <p class="text-body-secondary mb-1">Operação local</p>
+                <h1 class="h2 mb-0">Status do sistema</h1>
+            </div>
+
+            <div class="row g-4 mb-4">
+                <div class="col-12 col-md-6 col-xl-3">
+                    <div class="card status-card">
+                        <div class="card-body">
+                            <div class="text-body-secondary small">Sistema</div>
+                            <div id="healthStatus" class="fs-5 fw-semibold">Carregando</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12 col-md-6 col-xl-3">
+                    <div class="card status-card">
+                        <div class="card-body">
+                            <div class="text-body-secondary small">Fonte de dados</div>
+                            <div class="fs-5 fw-semibold">Anytype</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12 col-md-6 col-xl-3">
+                    <div class="card status-card">
+                        <div class="card-body">
+                            <div class="text-body-secondary small">API key</div>
+                            <div id="apiKeyStatus" class="fs-5 fw-semibold">Carregando</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12 col-md-6 col-xl-3">
+                    <div class="card status-card">
+                        <div class="card-body">
+                            <div class="text-body-secondary small">Espaço configurado</div>
+                            <div id="configuredSpaceName" class="fs-5 fw-semibold">Carregando</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <strong>Última sincronização nesta sessão</strong>
+                </div>
+                <div class="card-body">
+                    <div id="syncMessage" class="fw-semibold">Aguardando execução.</div>
+                    <div class="text-body-secondary small mt-2">As notificações de sincronização aparecem como balões no canto da tela.</div>
+                </div>
+            </div>
         </div>
-    </section>
+    </main>
 
-    <section class="sync-panel">
-        <div>
-            <h2>Sincronizacao</h2>
-            <p id="syncMessage">Aguardando execucao.</p>
+    <div class="toast-container position-fixed top-0 end-0 p-3">
+        <div id="syncToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="toast-header">
+                <div class="rounded me-2 sync-toast-dot"></div>
+                <strong class="me-auto" id="syncToastTitle">Sincronização</strong>
+                <small id="syncToastTime">agora</small>
+                <button type="button" class="btn-close" data-coreui-dismiss="toast" aria-label="Fechar"></button>
+            </div>
+            <div class="toast-body" id="syncToastBody">Aguardando execução.</div>
         </div>
-    </section>
+    </div>
+</div>
 
-    <section class="preview-note" id="previewNote">Carregando previa.</section>
-
-    <section class="summary-grid" id="summaryGrid"></section>
-
-    <section class="dashboard-grid">
-        <article class="panel panel-large">
-            <div class="panel-heading">
-                <h2>Ritmo semanal</h2>
-                <span>alteracoes inferidas</span>
-            </div>
-            <div class="activity-bars" id="activityBars"></div>
-        </article>
-
-        <article class="panel">
-            <div class="panel-heading">
-                <h2>Entendimento</h2>
-                <span>conceitos por nivel</span>
-            </div>
-            <div class="donut-wrap">
-                <div class="donut" id="understandingDonut"></div>
-                <div class="legend" id="understandingLegend"></div>
-            </div>
-        </article>
-
-        <article class="panel panel-large">
-            <div class="panel-heading">
-                <h2>Evolucao dos conceitos</h2>
-                <span>crescimento mensal</span>
-            </div>
-            <div class="trend" id="conceptTrend"></div>
-        </article>
-
-        <article class="panel">
-            <div class="panel-heading">
-                <h2>Checkpoints antigos</h2>
-                <span>prioridade de revisao</span>
-            </div>
-            <div class="checkpoint-list" id="checkpointList"></div>
-        </article>
-
-        <article class="panel panel-full">
-            <div class="panel-heading">
-                <h2>Progresso por tema</h2>
-                <span>volume, maturidade e revisao</span>
-            </div>
-            <div class="topic-table" id="topicTable"></div>
-        </article>
-    </section>
-</main>
+<script src="/vendor/coreui/simplebar/js/simplebar.min.js"></script>
+<script src="/vendor/coreui/js/coreui.bundle.min.js"></script>
 <script src="/app.js"></script>
 </body>
 </html>

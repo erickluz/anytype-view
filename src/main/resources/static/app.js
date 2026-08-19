@@ -17,6 +17,7 @@ async function loadStatus() {
 
     document.getElementById('healthStatus').textContent = health.status;
     document.getElementById('spaceName').textContent = anytype.spaceName;
+    document.getElementById('configuredSpaceName').textContent = anytype.spaceName;
     document.getElementById('apiKeyStatus').textContent = anytype.apiKeyConfigured ? 'Configurada' : 'Nao configurada';
     renderDashboard(dashboard);
 }
@@ -25,22 +26,54 @@ async function runSync() {
     const button = document.getElementById('syncButton');
     const message = document.getElementById('syncMessage');
     button.disabled = true;
+    button.textContent = 'Sincronizando';
     message.textContent = 'Executando...';
+    showSyncToast('Sincronização', 'Executando sincronização com o Anytype.', 'info');
 
     try {
         const result = await getJson('/api/sync', { method: 'POST' });
         if (result.snapshot) {
             message.textContent = `${result.status}: ${result.message} ${result.snapshot.objectCount} objetos, ${result.snapshot.activityDays} dias com atividade inferida.`;
+            showSyncToast('Snapshot salvo', message.textContent, 'success');
             const dashboard = await getJson('/api/dashboard/preview');
             renderDashboard(dashboard);
         } else {
             message.textContent = `${result.status}: ${result.message}`;
+            showSyncToast('Sincronização', message.textContent, result.status === 'SCHEMA_INVALID' ? 'warning' : 'info');
         }
     } catch (error) {
         message.textContent = `Erro ao executar sincronizacao: ${error.message}`;
+        showSyncToast('Erro na sincronização', message.textContent, 'danger');
     } finally {
         button.disabled = false;
+        button.textContent = 'Sincronizar';
     }
+}
+
+function showPage(pageId) {
+    const targetPage = pageId === 'system-status' ? 'system-status' : 'dashboard';
+    document.querySelectorAll('.page-section').forEach(section => {
+        section.classList.toggle('d-none', section.id !== targetPage);
+    });
+    document.querySelectorAll('[data-page-link]').forEach(link => {
+        link.classList.toggle('active', link.dataset.pageLink === targetPage);
+    });
+}
+
+function showSyncToast(title, body, tone) {
+    const toastElement = document.getElementById('syncToast');
+    const dot = toastElement.querySelector('.sync-toast-dot');
+    const toneClass = `sync-toast-${tone}`;
+    dot.className = `rounded me-2 sync-toast-dot ${toneClass}`;
+    document.getElementById('syncToastTitle').textContent = title;
+    document.getElementById('syncToastBody').textContent = body;
+    document.getElementById('syncToastTime').textContent = new Date().toLocaleTimeString('pt-BR', {
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+
+    const toast = coreui.Toast.getOrCreateInstance(toastElement, { delay: 8000 });
+    toast.show();
 }
 
 function renderDashboard(dashboard) {
@@ -55,13 +88,19 @@ function renderDashboard(dashboard) {
 
 function renderSummary(items) {
     const container = document.getElementById('summaryGrid');
-    container.innerHTML = items.map(item => `
-        <article class="summary-card">
-            <span>${item.caption}</span>
-            <strong>${item.value}</strong>
-            <em>${item.delta}</em>
-            <span>${item.label}</span>
-        </article>
+    container.innerHTML = items.map((item, index) => `
+        <div class="col-12 col-sm-6 col-xl-3">
+            <article class="card summary-card summary-card-tone-${(index % 4) + 1}">
+                <div class="card-body">
+                    <span class="summary-caption">${item.caption}</span>
+                    <strong class="summary-value">${item.value}</strong>
+                    <div>
+                        <span class="summary-delta">${item.delta}</span>
+                        <span class="summary-label d-block">${item.label}</span>
+                    </div>
+                </div>
+            </article>
+        </div>
     `).join('');
 }
 
@@ -133,7 +172,28 @@ function renderCheckpoints(checkpoints) {
 }
 
 document.getElementById('syncButton').addEventListener('click', runSync);
+document.querySelectorAll('[data-page-link]').forEach(link => {
+    link.addEventListener('click', event => {
+        event.preventDefault();
+        const pageId = event.currentTarget.dataset.pageLink;
+        history.replaceState(null, '', `#${pageId}`);
+        showPage(pageId);
+    });
+});
+document.querySelectorAll('[data-dashboard-target]').forEach(link => {
+    link.addEventListener('click', event => {
+        event.preventDefault();
+        const targetId = event.currentTarget.dataset.dashboardTarget;
+        history.replaceState(null, '', `#${targetId}`);
+        showPage('dashboard');
+        document.getElementById(targetId).scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+});
+
+const initialHash = window.location.hash.replace('#', '');
+showPage(initialHash === 'system-status' ? 'system-status' : 'dashboard');
 loadStatus().catch(error => {
     document.getElementById('healthStatus').textContent = 'Erro';
     document.getElementById('syncMessage').textContent = `Erro ao carregar status: ${error.message}`;
+    showSyncToast('Erro ao carregar status', error.message, 'danger');
 });
