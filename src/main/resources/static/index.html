@@ -4,8 +4,11 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="theme-color" content="#ffffff">
+    <meta name="theme-color" content="#f7f8fc">
     <title>Anytype View</title>
+    <script>
+        document.documentElement.dataset.theme = localStorage.getItem('av-theme') || 'dark';
+    </script>
     <link rel="stylesheet" href="/vendor/coreui/simplebar/css/simplebar.css">
     <link rel="stylesheet" href="/vendor/coreui/css/style.min.css">
     <link rel="stylesheet" href="/styles.css">
@@ -39,6 +42,10 @@
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="header-nav ms-auto align-items-center gap-3">
+                <button id="themeToggle" class="theme-toggle" type="button" aria-label="Alternar modo de cor" title="Alternar modo de cor">
+                    <span class="theme-toggle-icon" aria-hidden="true">☀</span>
+                    <span class="theme-toggle-label">Claro</span>
+                </button>
                 <button id="syncButton" class="btn btn-outline-secondary btn-sm sync-button" type="button">Sincronizar</button>
                 <div class="nav-item py-3">
                     <span class="text-body-secondary">Espaço</span>

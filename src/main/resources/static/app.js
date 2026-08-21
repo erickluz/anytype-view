@@ -12,6 +12,24 @@ const PAGE_IDS = ['dashboard', 'checkpoints-page', 'topics-page', 'concepts-page
 const knowledgeViews = {};
 let growthTrend = { month: [], day: [] };
 
+function applyTheme(theme) {
+    const isDark = theme === 'dark';
+    document.documentElement.dataset.theme = theme;
+    document.documentElement.dataset.coreuiTheme = theme;
+    document.querySelector('meta[name="theme-color"]').content = isDark ? '#090b12' : '#eef2fb';
+
+    const button = document.getElementById('themeToggle');
+    button.querySelector('.theme-toggle-icon').textContent = isDark ? '☀' : '☾';
+    button.querySelector('.theme-toggle-label').textContent = isDark ? 'Claro' : 'Escuro';
+    button.setAttribute('aria-label', isDark ? 'Ativar modo claro' : 'Ativar modo escuro');
+}
+
+function toggleTheme() {
+    const nextTheme = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+    localStorage.setItem('av-theme', nextTheme);
+    applyTheme(nextTheme);
+}
+
 async function loadStatus() {
     const [health, anytype, dashboard] = await Promise.all([
         getJson('/api/health'),
@@ -491,6 +509,7 @@ function activityAge(days) {
 }
 
 document.getElementById('syncButton').addEventListener('click', runSync);
+document.getElementById('themeToggle').addEventListener('click', toggleTheme);
 document.getElementById('growthGranularity').addEventListener('change', renderGrowthTrend);
 document.querySelectorAll('[data-page-link]').forEach(link => {
     link.addEventListener('click', event => {
@@ -523,6 +542,7 @@ document.querySelectorAll('[data-page-link]').forEach(link => {
 });
 
 const initialHash = window.location.hash.replace('#', '');
+applyTheme(document.documentElement.dataset.theme === 'light' ? 'light' : 'dark');
 showPage(PAGE_IDS.includes(initialHash) ? initialHash : 'dashboard');
 window.addEventListener('hashchange', () => {
     const pageId = window.location.hash.replace('#', '');
