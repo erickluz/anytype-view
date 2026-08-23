@@ -17,10 +17,12 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
@@ -55,6 +57,7 @@ public class DashboardGatewayImpl implements DashboardGateway {
         Map<String, LocalDate> latestCheckpointByTopic = latestCheckpointByTopic(objects, namesByObjectId);
         Map<String, TopicForecast> forecastsByTopic = topicForecasts(objects, namesByObjectId);
         List<DashboardDTO.TopicProgressDTO> topics = topics(objects, namesByObjectId, latestCheckpointByTopic, forecastsByTopic);
+        List<DashboardDTO.TopicProgressDTO> macroTopics = macroTopics(objects);
         List<DashboardDTO.CheckpointProgressDTO> checkpointProgress = checkpointProgress(objects, namesByObjectId);
 
         return Optional.of(new DashboardDTO(
@@ -68,6 +71,7 @@ public class DashboardGatewayImpl implements DashboardGateway {
             conceptTrendDaily(objects),
             understanding,
             topics,
+            macroTopics,
             checkpointProgress,
             recentCheckpoints(objects, namesByObjectId)
         ));
@@ -627,6 +631,13 @@ public class DashboardGatewayImpl implements DashboardGateway {
         Map<String, LocalDate> latestCheckpointByTopic,
         Map<String, TopicForecast> forecastsByTopic
     ) {
+        Map<String, String> topicTypeById = new HashMap<>();
+        for (SnapshotObjectRow object : objects) {
+            if ("Tema".equals(normalizedTypeName(object.anytypeTypeName()))) {
+                topicTypeById.put(object.anytypeObjectId(), selectPropertyName(object, "Tipo").orElse(""));
+            }
+        }
+
         Map<String, TopicAccumulator> topics = new HashMap<>();
         for (SnapshotObjectRow object : objects) {
             if (!"Conceito".equals(normalizedTypeName(object.anytypeTypeName()))) {
@@ -644,6 +655,9 @@ public class DashboardGatewayImpl implements DashboardGateway {
             boolean hasCheckpoint = !objectPropertyIds(object, "Checkpoint").isEmpty();
 
             for (String categoryId : categoryIds) {
+                if (!"subtema".equals(normalizeName(topicTypeById.getOrDefault(categoryId, "")))) {
+                    continue;
+                }
                 String topicName = namesByObjectId.getOrDefault(categoryId, "Sem tema");
                 topics.computeIfAbsent(topicName, key -> new TopicAccumulator()).add(understandingValue, hasCheckpoint);
             }
@@ -668,9 +682,108 @@ public class DashboardGatewayImpl implements DashboardGateway {
                 }
                 return Integer.compare(rightTopic.concepts(), leftTopic.concepts());
             })
-            .limit(6)
             .map(entry -> entry.getValue().toDTO(entry.getKey(), latestCheckpointByTopic.get(entry.getKey()), today, forecastsByTopic.get(entry.getKey())))
             .toList();
+    }
+
+    private List<DashboardDTO.TopicProgressDTO> macroTopics(List<SnapshotObjectRow> objects) {
+        Map<String, SnapshotObjectRow> topicsById = new LinkedHashMap<>();
+        for (SnapshotObjectRow object : objects) {
+            if ("Tema".equals(normalizedTypeName(object.anytypeTypeName()))) {
+                topicsById.put(object.anytypeObjectId(), object);
+            }
+        }
+
+        Map<String, Set<String>> childrenByTopicId = new LinkedHashMap<>();
+        for (SnapshotObjectRow topic : topicsById.values()) {
+            Set<String> children = new LinkedHashSet<>();
+            for (String linkedId : objectPropertyIds(topic, "Links")) {
+                SnapshotObjectRow linkedTopic = topicsById.get(linkedId);
+                if (linkedTopic != null && "subtema".equals(
+                    selectPropertyName(linkedTopic, "Tipo").map(this::normalizeName).orElse("")
+                )) {
+                    children.add(linkedId);
+                }
+            }
+            childrenByTopicId.put(topic.anytypeObjectId(), children);
+        }
+
+        Map<String, TopicAccumulator> accumulatorsByMacroId = new LinkedHashMap<>();
+        Map<String, LocalDate> latestCheckpointByMacroId = new HashMap<>();
+        Map<String, Set<String>> descendantsByMacroId = new LinkedHashMap<>();
+        for (SnapshotObjectRow topic : topicsById.values()) {
+            if (!"tema".equals(selectPropertyName(topic, "Tipo").map(this::normalizeName).orElse(""))) {
+                continue;
+            }
+            String topicId = topic.anytypeObjectId();
+            descendantsByMacroId.put(topicId, descendantTopicIds(topicId, childrenByTopicId));
+            accumulatorsByMacroId.put(topicId, new TopicAccumulator());
+        }
+
+        for (SnapshotObjectRow concept : objects) {
+            if (!"Conceito".equals(normalizedTypeName(concept.anytypeTypeName()))) {
+                continue;
+            }
+            String understanding = selectPropertyName(concept, "Entendimento")
+                .map(this::normalizeName)
+                .orElse("desconhecido");
+            boolean hasCheckpoint = !objectPropertyIds(concept, "Checkpoint").isEmpty();
+            Set<String> categoryIds = new LinkedHashSet<>(objectPropertyIds(concept, "Categoria"));
+            for (Map.Entry<String, Set<String>> macro : descendantsByMacroId.entrySet()) {
+                if (categoryIds.stream().anyMatch(macro.getValue()::contains)) {
+                    accumulatorsByMacroId.get(macro.getKey()).add(understanding, hasCheckpoint);
+                }
+            }
+        }
+
+        for (SnapshotObjectRow checkpoint : objects) {
+            if (!"Checkpoint de Conhecimento".equals(normalizedTypeName(checkpoint.anytypeTypeName()))) {
+                continue;
+            }
+            Optional<LocalDate> workedAt = checkpointWorkDate(checkpoint);
+            if (workedAt.isEmpty()) {
+                continue;
+            }
+            Set<String> topicIds = new LinkedHashSet<>(objectPropertyIds(checkpoint, "Tema"));
+            for (Map.Entry<String, Set<String>> macro : descendantsByMacroId.entrySet()) {
+                if (topicIds.stream().anyMatch(macro.getValue()::contains)) {
+                    latestCheckpointByMacroId.merge(macro.getKey(), workedAt.get(),
+                        (current, candidate) -> candidate.isAfter(current) ? candidate : current);
+                }
+            }
+        }
+
+        LocalDate today = LocalDate.now(DASHBOARD_ZONE);
+        return accumulatorsByMacroId.entrySet().stream()
+            .sorted((left, right) -> compareTopicAccumulators(left.getValue(), right.getValue()))
+            .map(entry -> entry.getValue().toDTO(
+                topicsById.get(entry.getKey()).objectName(),
+                latestCheckpointByMacroId.get(entry.getKey()),
+                today,
+                null
+            ))
+            .toList();
+    }
+
+    private Set<String> descendantTopicIds(String rootTopicId, Map<String, Set<String>> childrenByTopicId) {
+        Set<String> descendants = new LinkedHashSet<>();
+        List<String> pending = new ArrayList<>(List.of(rootTopicId));
+        while (!pending.isEmpty()) {
+            String topicId = pending.remove(pending.size() - 1);
+            if (!descendants.add(topicId)) {
+                continue;
+            }
+            pending.addAll(childrenByTopicId.getOrDefault(topicId, Set.of()));
+        }
+        return descendants;
+    }
+
+    private int compareTopicAccumulators(TopicAccumulator left, TopicAccumulator right) {
+        int byMature = Integer.compare(right.mature, left.mature);
+        if (byMature != 0) {
+            return byMature;
+        }
+        return Integer.compare(right.concepts, left.concepts);
     }
 
     private List<DashboardDTO.CheckpointProgressDTO> checkpointProgress(
@@ -1248,7 +1361,7 @@ public class DashboardGatewayImpl implements DashboardGateway {
                 percent(checkpointCovered),
                 lowUnderstanding,
                 daysSinceCheckpoint,
-                forecast == null ? 0 : forecast.remainingToIntermediate(),
+                forecast == null ? concepts - mature : forecast.remainingToIntermediate(),
                 forecast == null ? null : forecast.estimatedCompletionDays(),
                 forecast == null ? null : forecast.estimatedCompletionWeeks(),
                 forecast != null && forecast.estimatedFromGeneralRate(),

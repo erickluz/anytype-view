@@ -217,6 +217,9 @@ As métricas iniciais devem responder aos problemas de progresso, ritmo, interru
 ### Progresso por Tema
 
 - conceitos por tema;
+- painel com duas visões determinadas pela propriedade `Tema.Tipo`: `micro` mostra itens marcados como `Subtema` e considera apenas a ligação direta `Conceito.Categoria -> Tema`; `macro` mostra todos os itens marcados como `Tema` e agrega somente descendentes marcados como `Subtema` em `Tema.Links`. Ligações entre dois itens `Tema` são tratadas como relações conceituais e não entram na agregação;
+- na visão macro, um conceito é contado uma vez por tema exibido, mesmo que esteja ligado a mais de um item no mesmo ramo; se estiver sob mais de um tema exibido, aparece em cada contexto correspondente;
+- as duas visões exibem todos os temas com paginação local e permitem ordenar por maturidade, quantidade de conceitos, conceitos em nível baixo e dias desde o último checkpoint;
 - distribuição de `Entendimento` por tema;
 - temas sem checkpoint recente;
 - temas com maior quantidade de conceitos em níveis baixos de entendimento.

@@ -67,14 +67,21 @@ public class GetDashboardPreviewUC {
                 new DashboardDTO.UnderstandingSliceDTO("Intermediario", 128, "#2563eb"),
                 new DashboardDTO.UnderstandingSliceDTO("Forte", 36, "#059669")
             ),
-            List.of(
-                new DashboardDTO.TopicProgressDTO("Spring", 64, 46, 72, 58, 91, 12, 18, 41, 64, 8, 4, 18, 42, 6, false, false, true),
+                List.of(
+                    new DashboardDTO.TopicProgressDTO("Spring", 64, 46, 72, 58, 91, 12, 18, 41, 64, 8, 4, 18, 42, 6, false, false, true),
                 new DashboardDTO.TopicProgressDTO("Arquitetura", 58, 38, 65, 49, 84, 8, 14, 34, 59, 12, 9, 20, 70, 10, true, false, false),
                 new DashboardDTO.TopicProgressDTO("IA aplicada", 42, 18, 44, 28, 67, 4, 10, 16, 38, 19, 3, 24, null, null, false, false, false),
                 new DashboardDTO.TopicProgressDTO("Cloud Native", 36, 18, 51, 26, 72, 3, 8, 15, 42, 14, 11, 18, 84, 12, true, false, false),
-                new DashboardDTO.TopicProgressDTO("Observabilidade", 31, 21, 68, 27, 87, 6, 19, 19, 61, 5, 6, 10, 35, 5, false, true, false)
-            ),
-            List.of(
+                    new DashboardDTO.TopicProgressDTO("Observabilidade", 31, 21, 68, 27, 87, 6, 19, 19, 61, 5, 6, 10, 35, 5, false, true, false)
+                ),
+                List.of(
+                    new DashboardDTO.TopicProgressDTO("Spring", 64, 46, 72, 58, 91, 12, 18, 41, 64, 8, 4, 18, 42, 6, false, false, true),
+                    new DashboardDTO.TopicProgressDTO("Arquitetura", 58, 38, 65, 49, 84, 8, 14, 34, 59, 12, 9, 20, 70, 10, true, false, false),
+                    new DashboardDTO.TopicProgressDTO("IA aplicada", 42, 18, 44, 28, 67, 4, 10, 16, 38, 19, 3, 24, null, null, false, false, false),
+                    new DashboardDTO.TopicProgressDTO("Cloud Native", 36, 18, 51, 26, 72, 3, 8, 15, 42, 14, 11, 18, 84, 12, true, false, false),
+                    new DashboardDTO.TopicProgressDTO("Observabilidade", 31, 21, 68, 27, 87, 6, 19, 19, 61, 5, 6, 10, 35, 5, false, true, false)
+                ),
+                List.of(
                 new DashboardDTO.CheckpointProgressDTO("Checkpoint Java", "Java", 18, 13, 72, 10, 56, "2026-08-20T12:00:00Z"),
                 new DashboardDTO.CheckpointProgressDTO("Checkpoint Spring", "Spring", 24, 17, 71, 14, 58, "2026-08-19T12:00:00Z"),
                 new DashboardDTO.CheckpointProgressDTO("Checkpoint Cloud", "Cloud Native", 15, 7, 47, 5, 33, "2026-08-18T12:00:00Z")

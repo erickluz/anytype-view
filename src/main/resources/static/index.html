@@ -132,12 +132,42 @@
 
             <section class="mb-4" id="topics">
                 <div class="card">
-                    <div class="card-header d-flex align-items-center justify-content-between">
-                        <strong>Progresso por tema</strong>
-                        <span class="small text-body-secondary">temas com mais maturidade construída</span>
+                    <div class="card-header d-flex align-items-center justify-content-between gap-3">
+                        <div>
+                            <strong class="d-block">Progresso por tema</strong>
+                            <span class="small text-body-secondary" id="topicProgressDescription">conceitos ligados diretamente a cada tema</span>
+                        </div>
+                        <div class="checkpoint-progress-controls">
+                            <select id="topicProgressView" class="form-select form-select-sm" aria-label="Escolher visão de progresso por tema">
+                                <option value="micro">Tema micro</option>
+                                <option value="macro">Tema macro</option>
+                            </select>
+                            <select id="topicProgressSort" class="form-select form-select-sm checkpoint-progress-sort-select" aria-label="Ordenar progresso por tema">
+                                <option value="progressPercent">Maturidade</option>
+                                <option value="concepts">Quantidade de conceitos</option>
+                                <option value="lowUnderstanding">Em nível baixo</option>
+                                <option value="daysSinceCheckpoint">Dias sem checkpoint</option>
+                            </select>
+                            <div class="checkpoint-sort-direction" role="group" aria-label="Direção da ordenação">
+                                <button class="checkpoint-sort-direction-button" data-topic-sort-direction="asc" type="button" aria-label="Ordenação crescente" aria-pressed="false" title="Crescente">
+                                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5m0 0-5 5m5-5 5 5"/></svg>
+                                </button>
+                                <button class="checkpoint-sort-direction-button active" data-topic-sort-direction="desc" type="button" aria-label="Ordenação decrescente" aria-pressed="true" title="Decrescente">
+                                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14m0 0 5-5m-5 5-5-5"/></svg>
+                                </button>
+                            </div>
+                        </div>
                     </div>
                     <div class="card-body">
                         <div class="topic-table" id="topicTable"></div>
+                        <div class="checkpoint-progress-pagination">
+                            <span class="topic-meta" id="topicProgressResultCount"></span>
+                            <div class="d-flex align-items-center gap-2">
+                                <button class="btn btn-sm btn-outline-secondary" id="topicProgressPrevious" type="button">Anterior</button>
+                                <span class="topic-meta" id="topicProgressPage"></span>
+                                <button class="btn btn-sm btn-outline-secondary" id="topicProgressNext" type="button">Próxima</button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </section>

@@ -11,8 +11,11 @@ async function getJson(url, options) {
 const PAGE_IDS = ['dashboard', 'checkpoints-page', 'topics-page', 'concepts-page', 'system-status'];
 const knowledgeViews = {};
 const CHECKPOINT_PROGRESS_PAGE_SIZE = 5;
+const TOPIC_PROGRESS_PAGE_SIZE = 5;
 let checkpointProgressState = { items: [], page: 1, direction: 'desc' };
 let growthTrend = { month: [], day: [] };
+let topicProgressViews = { micro: [], macro: [] };
+let topicProgressState = { items: [], page: 1, direction: 'desc' };
 
 function applyTheme(theme) {
     const isDark = theme === 'dark';
@@ -121,7 +124,13 @@ function renderDashboard(dashboard) {
     document.getElementById('growthGranularity').value = 'month';
     renderGrowthTrend();
     renderUnderstanding(dashboard.understanding);
-    renderTopics(dashboard.topics);
+    topicProgressViews = {
+        micro: dashboard.topics || [],
+        macro: dashboard.macroTopics || []
+    };
+    const topicProgressView = localStorage.getItem('av-topic-progress-view') || 'micro';
+    document.getElementById('topicProgressView').value = topicProgressView;
+    renderTopicProgressView();
     renderCheckpointProgress(dashboard.checkpointProgress);
     renderCheckpoints(dashboard.checkpoints);
 }
@@ -280,6 +289,52 @@ function renderTopics(topics) {
             </div>
         </div>
     `).join('');
+}
+
+function renderTopicProgressView() {
+    const view = document.getElementById('topicProgressView').value;
+    const isMacro = view === 'macro';
+    document.getElementById('topicProgressDescription').textContent = isMacro
+        ? 'temas; inclui conceitos diretos e de todos os descendentes'
+        : 'subtemas; mostra conceitos ligados diretamente a cada item';
+    topicProgressState = {
+        items: topicProgressViews[view] || [],
+        page: 1,
+        direction: topicProgressState.direction
+    };
+    renderTopicProgressPage();
+}
+
+function renderTopicProgressPage() {
+    const sortBy = document.getElementById('topicProgressSort').value;
+    const direction = topicProgressState.direction === 'asc' ? 1 : -1;
+    const sorted = [...topicProgressState.items].sort((left, right) => {
+        const leftValue = topicSortValue(left, sortBy);
+        const rightValue = topicSortValue(right, sortBy);
+        const comparison = leftValue === rightValue
+            ? left.name.localeCompare(right.name, 'pt-BR')
+            : leftValue - rightValue;
+        return comparison * direction;
+    });
+    const totalPages = Math.max(1, Math.ceil(sorted.length / TOPIC_PROGRESS_PAGE_SIZE));
+    topicProgressState.page = Math.min(Math.max(topicProgressState.page, 1), totalPages);
+    const start = (topicProgressState.page - 1) * TOPIC_PROGRESS_PAGE_SIZE;
+    const pageItems = sorted.slice(start, start + TOPIC_PROGRESS_PAGE_SIZE);
+
+    renderTopics(pageItems);
+    document.getElementById('topicProgressResultCount').textContent = sorted.length === 0
+        ? 'Nenhum tema disponível'
+        : `${start + 1}–${start + pageItems.length} de ${sorted.length} temas`;
+    document.getElementById('topicProgressPage').textContent = `Página ${topicProgressState.page} de ${totalPages}`;
+    document.getElementById('topicProgressPrevious').disabled = topicProgressState.page === 1;
+    document.getElementById('topicProgressNext').disabled = topicProgressState.page === totalPages;
+}
+
+function topicSortValue(topic, sortBy) {
+    if (sortBy === 'daysSinceCheckpoint') {
+        return topic.daysSinceCheckpoint < 0 ? Number.MAX_SAFE_INTEGER : topic.daysSinceCheckpoint;
+    }
+    return topic[sortBy];
 }
 
 function renderTopicDetail(label, count, percent) {
@@ -589,6 +644,32 @@ document.getElementById('checkpointProgressPrevious').addEventListener('click', 
 document.getElementById('checkpointProgressNext').addEventListener('click', () => {
     checkpointProgressState.page++;
     renderCheckpointProgressPage();
+});
+document.getElementById('topicProgressView').addEventListener('change', event => {
+    localStorage.setItem('av-topic-progress-view', event.target.value);
+    renderTopicProgressView();
+});
+document.getElementById('topicProgressSort').addEventListener('change', () => {
+    topicProgressState.page = 1;
+    renderTopicProgressPage();
+});
+document.querySelectorAll('[data-topic-sort-direction]').forEach(button => button.addEventListener('click', () => {
+    topicProgressState.direction = button.dataset.topicSortDirection;
+    topicProgressState.page = 1;
+    document.querySelectorAll('[data-topic-sort-direction]').forEach(directionButton => {
+        const active = directionButton === button;
+        directionButton.classList.toggle('active', active);
+        directionButton.setAttribute('aria-pressed', String(active));
+    });
+    renderTopicProgressPage();
+}));
+document.getElementById('topicProgressPrevious').addEventListener('click', () => {
+    topicProgressState.page--;
+    renderTopicProgressPage();
+});
+document.getElementById('topicProgressNext').addEventListener('click', () => {
+    topicProgressState.page++;
+    renderTopicProgressPage();
 });
 document.querySelectorAll('[data-page-link]').forEach(link => {
     link.addEventListener('click', event => {

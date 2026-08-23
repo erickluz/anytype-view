@@ -13,6 +13,7 @@ public record DashboardDTO(
     List<TrendPointDTO> conceptTrendDaily,
     List<UnderstandingSliceDTO> understanding,
     List<TopicProgressDTO> topics,
+    List<TopicProgressDTO> macroTopics,
     List<CheckpointProgressDTO> checkpointProgress,
     List<CheckpointDTO> checkpoints
 ) {
