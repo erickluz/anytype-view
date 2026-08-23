@@ -13,6 +13,7 @@ public record DashboardDTO(
     List<TrendPointDTO> conceptTrendDaily,
     List<UnderstandingSliceDTO> understanding,
     List<TopicProgressDTO> topics,
+    List<CheckpointProgressDTO> checkpointProgress,
     List<CheckpointDTO> checkpoints
 ) {
     public record ProblemIndicatorDTO(String label, String value, String context, String tone) {
@@ -61,6 +62,18 @@ public record DashboardDTO(
         String workedAt,
         String perceivedLevel,
         int sellability
+    ) {
+    }
+
+    public record CheckpointProgressDTO(
+        String name,
+        String topic,
+        int concepts,
+        int matureConcepts,
+        int maturityPercent,
+        int readyConcepts,
+        int readyPercent,
+        String lastModifiedAt
     ) {
     }
 }

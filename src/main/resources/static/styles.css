@@ -77,12 +77,50 @@ body {
 }
 
 .sidebar .nav-link {
+    align-items: center;
+    display: flex;
     border-radius: 0.5rem;
     font-size: 0.875rem;
     font-weight: 600;
     margin: 0.125rem 0.75rem;
     padding: 0.625rem 0.75rem;
     transition: background-color 160ms ease, color 160ms ease, transform 160ms ease;
+}
+
+.sidebar .nav-icon {
+    color: inherit;
+    fill: none;
+    flex: 0 0 1.125rem;
+    height: 1.125rem;
+    margin-right: 0.75rem;
+    stroke: currentColor;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-width: 1.8;
+    width: 1.125rem;
+}
+
+.sidebar .nav-label {
+    min-width: 0;
+}
+
+.sidebar-footer {
+    padding: 0 !important;
+}
+
+.sidebar-footer .sidebar-toggler {
+    align-self: stretch;
+    height: 100%;
+    margin: 0 !important;
+    min-height: 3.25rem;
+    width: 100%;
+}
+
+.sidebar-footer .sidebar-toggler::before {
+    height: 1.25rem;
+    inset: 0;
+    margin: auto;
+    width: 1.25rem;
 }
 
 .sidebar .nav-link:hover {
@@ -118,6 +156,38 @@ body {
     color: #ffffff;
     font-weight: 750;
     letter-spacing: -0.025em;
+}
+
+/* Estado recolhido: mantém a marca e deixa a navegação apenas por ícones. */
+.sidebar.sidebar-narrow .sidebar-header,
+.sidebar.sidebar-narrow-unfoldable:not(:hover) .sidebar-header {
+    padding-inline: 0;
+}
+
+.sidebar.sidebar-narrow .sidebar-brand,
+.sidebar.sidebar-narrow-unfoldable:not(:hover) .sidebar-brand {
+    justify-content: center;
+    padding-inline: 0;
+    width: 100%;
+}
+
+.sidebar.sidebar-narrow .brand-name,
+.sidebar.sidebar-narrow-unfoldable:not(:hover) .brand-name,
+.sidebar.sidebar-narrow .nav-label,
+.sidebar.sidebar-narrow-unfoldable:not(:hover) .nav-label {
+    display: none;
+}
+
+.sidebar.sidebar-narrow .nav-link,
+.sidebar.sidebar-narrow-unfoldable:not(:hover) .nav-link {
+    justify-content: center;
+    margin-inline: 0.5rem;
+    padding-inline: 0;
+}
+
+.sidebar.sidebar-narrow .nav-icon,
+.sidebar.sidebar-narrow-unfoldable:not(:hover) .nav-icon {
+    margin-right: 0;
 }
 
 .header-toggler {
@@ -587,7 +657,8 @@ h1,
 
 .legend,
 .checkpoint-list,
-.topic-table {
+.topic-table,
+.checkpoint-progress-table {
     display: grid;
     gap: 0.75rem;
 }
@@ -647,20 +718,35 @@ h1,
     padding: 1rem 0;
 }
 
+.checkpoint-progress-row {
+    align-items: center;
+    display: grid;
+    gap: 1.5rem;
+    grid-template-columns: minmax(10rem, 0.8fr) minmax(16rem, 1.25fr);
+    padding: 1rem 0;
+}
+
+.checkpoint-progress-row + .checkpoint-progress-row {
+    border-top: 1px solid var(--cui-border-color);
+}
+
 .topic-row + .topic-row {
     border-top: 1px solid var(--cui-border-color);
 }
 
 .topic-name,
 .topic-primary-progress,
-.topic-details {
+.topic-details,
+.checkpoint-progress-bars,
+.checkpoint-progress-bar {
     display: grid;
     gap: 0.375rem;
     min-width: 0;
 }
 
 .topic-progress-label,
-.topic-details {
+.topic-details,
+.checkpoint-progress-bar {
     color: var(--cui-secondary-color);
     font-size: 0.8125rem;
 }
@@ -679,6 +765,103 @@ h1,
 .topic-details .topic-meta {
     grid-column: 1 / -1;
     overflow-wrap: anywhere;
+}
+
+.checkpoint-progress-bars {
+    gap: 0.875rem;
+}
+
+.checkpoint-progress-controls,
+.checkpoint-progress-pagination {
+    align-items: center;
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 0.5rem;
+}
+
+.checkpoint-progress-controls .form-select {
+    flex: 0 1 14rem;
+    min-width: 11rem;
+    width: auto;
+}
+
+.checkpoint-progress-sort-select,
+.checkpoint-sort-direction {
+    backdrop-filter: blur(14px);
+    background: rgb(255 255 255 / 8%);
+    border: 1px solid rgb(232 237 255 / 18%);
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 11%), 0 6px 16px rgb(0 0 0 / 10%);
+}
+
+.checkpoint-progress-sort-select {
+    color: var(--av-ink);
+}
+
+.checkpoint-progress-sort-select:focus {
+    background: rgb(255 255 255 / 13%);
+    border-color: var(--av-accent);
+}
+
+.checkpoint-progress-sort-select option {
+    background: #20273a;
+    color: #f4f6ff;
+}
+
+:root[data-theme="light"] .checkpoint-progress-sort-select option {
+    background: #ffffff;
+    color: #172033;
+}
+
+.checkpoint-sort-direction {
+    border-radius: 0.5rem;
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    overflow: hidden;
+    width: 4rem;
+}
+
+.checkpoint-sort-direction-button {
+    align-items: center;
+    background: transparent;
+    border: 0;
+    color: var(--av-muted);
+    display: inline-flex;
+    flex: 0 0 2rem;
+    height: 1.9375rem;
+    justify-content: center;
+    padding: 0;
+    transition: background-color 160ms ease, color 160ms ease;
+    width: 2rem;
+}
+
+.checkpoint-sort-direction-button + .checkpoint-sort-direction-button {
+    border-left: 1px solid rgb(232 237 255 / 14%);
+}
+
+.checkpoint-sort-direction-button svg {
+    fill: none;
+    height: 1rem;
+    stroke: currentColor;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-width: 2;
+    width: 1rem;
+}
+
+.checkpoint-sort-direction-button:hover,
+.checkpoint-sort-direction-button:focus-visible,
+.checkpoint-sort-direction-button.active {
+    background: rgb(139 156 255 / 21%);
+    color: var(--av-ink);
+}
+
+.checkpoint-progress-pagination {
+    border-top: 1px solid var(--cui-border-color);
+    flex-wrap: wrap;
+    justify-content: space-between;
+    margin-top: 0.75rem;
+    padding-top: 1rem;
 }
 
 .volatility-indicator {
@@ -708,7 +891,8 @@ h1,
 
 @media (max-width: 767.98px) {
     .donut-wrap,
-    .topic-row {
+    .topic-row,
+    .checkpoint-progress-row {
         grid-template-columns: 1fr;
     }
 
@@ -730,6 +914,15 @@ h1,
     .detail-filter-group-concepts {
         grid-template-columns: 1fr;
         width: 100%;
+    }
+
+    .checkpoint-progress-controls {
+        flex-wrap: nowrap;
+        width: auto;
+    }
+
+    .checkpoint-sort-direction {
+        width: 4rem;
     }
 
     .detail-toolbar {
@@ -858,8 +1051,12 @@ body::before {
 :root[data-theme="light"] .brand-name { color: #25314c; }
 :root[data-theme="light"] .sidebar .nav-title { color: #8994ac; }
 :root[data-theme="light"] .sidebar .nav-link { color: #516078; }
+:root[data-theme="light"] .sidebar .nav-icon { color: #516078 !important; }
 :root[data-theme="light"] .sidebar .nav-link:hover { color: #26324e; }
+:root[data-theme="light"] .sidebar .nav-link:hover .nav-icon { color: #26324e !important; }
 :root[data-theme="light"] .sidebar .nav-link.active { color: #353bb3; }
+:root[data-theme="light"] .sidebar .nav-link.active .nav-icon { color: #353bb3 !important; }
+:root[data-theme="light"] .sidebar-footer .sidebar-toggler::before { background-color: #516078; }
 :root[data-theme="light"] .sidebar .nav-link.active { box-shadow: inset 3px 0 0 #737cf0, 0 5px 16px rgb(83 100 220 / 8%); }
 
 .header {
@@ -989,6 +1186,8 @@ h1,
 }
 
 :root[data-theme="light"] .toast { background: rgb(255 255 255 / 80%); }
+:root[data-theme="light"] .contribution-day.contribution-level-0 { background: #dbe2ee; }
+:root[data-theme="light"] .contribution-day-empty { background: transparent; }
 .toast-header { background: transparent; border-bottom-color: var(--av-border); color: var(--av-ink); }
 .btn-close { filter: invert(1) grayscale(1); }
 :root[data-theme="light"] .btn-close { filter: none; }

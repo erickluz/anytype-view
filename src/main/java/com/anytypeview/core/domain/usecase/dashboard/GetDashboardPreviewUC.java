@@ -75,6 +75,11 @@ public class GetDashboardPreviewUC {
                 new DashboardDTO.TopicProgressDTO("Observabilidade", 31, 21, 68, 27, 87, 6, 19, 19, 61, 5, 6, 10, 35, 5, false, true, false)
             ),
             List.of(
+                new DashboardDTO.CheckpointProgressDTO("Checkpoint Java", "Java", 18, 13, 72, 10, 56, "2026-08-20T12:00:00Z"),
+                new DashboardDTO.CheckpointProgressDTO("Checkpoint Spring", "Spring", 24, 17, 71, 14, 58, "2026-08-19T12:00:00Z"),
+                new DashboardDTO.CheckpointProgressDTO("Checkpoint Cloud", "Cloud Native", 15, 7, 47, 5, 33, "2026-08-18T12:00:00Z")
+            ),
+            List.of(
                 new DashboardDTO.CheckpointDTO("Arquitetura Reativa", "2 dias", "17/08", "Intermediario", 8),
                 new DashboardDTO.CheckpointDTO("Cloud Native", "5 dias", "14/08", "Basico", 6),
                 new DashboardDTO.CheckpointDTO("System Design", "8 dias", "11/08", "Intermediario", 7)

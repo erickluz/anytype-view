@@ -55,6 +55,7 @@ public class DashboardGatewayImpl implements DashboardGateway {
         Map<String, LocalDate> latestCheckpointByTopic = latestCheckpointByTopic(objects, namesByObjectId);
         Map<String, TopicForecast> forecastsByTopic = topicForecasts(objects, namesByObjectId);
         List<DashboardDTO.TopicProgressDTO> topics = topics(objects, namesByObjectId, latestCheckpointByTopic, forecastsByTopic);
+        List<DashboardDTO.CheckpointProgressDTO> checkpointProgress = checkpointProgress(objects, namesByObjectId);
 
         return Optional.of(new DashboardDTO(
             "REAL",
@@ -67,6 +68,7 @@ public class DashboardGatewayImpl implements DashboardGateway {
             conceptTrendDaily(objects),
             understanding,
             topics,
+            checkpointProgress,
             recentCheckpoints(objects, namesByObjectId)
         ));
     }
@@ -671,6 +673,89 @@ public class DashboardGatewayImpl implements DashboardGateway {
             .toList();
     }
 
+    private List<DashboardDTO.CheckpointProgressDTO> checkpointProgress(
+        List<SnapshotObjectRow> objects,
+        Map<String, String> namesByObjectId
+    ) {
+        Map<String, SnapshotObjectRow> objectsById = new HashMap<>();
+        Map<String, java.util.LinkedHashSet<String>> conceptIdsByCheckpointId = new HashMap<>();
+        for (SnapshotObjectRow object : objects) {
+            objectsById.put(object.anytypeObjectId(), object);
+            if (!"Conceito".equals(normalizedTypeName(object.anytypeTypeName()))) {
+                continue;
+            }
+            for (String checkpointId : objectPropertyIds(object, "Checkpoint")) {
+                conceptIdsByCheckpointId
+                    .computeIfAbsent(checkpointId, ignored -> new java.util.LinkedHashSet<>())
+                    .add(object.anytypeObjectId());
+            }
+        }
+
+        List<DashboardDTO.CheckpointProgressDTO> progress = new ArrayList<>();
+        for (SnapshotObjectRow checkpoint : objects) {
+            if (!"Checkpoint de Conhecimento".equals(normalizedTypeName(checkpoint.anytypeTypeName()))) {
+                continue;
+            }
+
+            int concepts = 0;
+            int matureConcepts = 0;
+            int readyConcepts = 0;
+            java.util.LinkedHashSet<String> conceptIds = new java.util.LinkedHashSet<>(objectPropertyIds(checkpoint, "Conecta com"));
+            if (conceptIds.isEmpty()) {
+                conceptIds.addAll(conceptIdsByCheckpointId.getOrDefault(
+                    checkpoint.anytypeObjectId(),
+                    new java.util.LinkedHashSet<>()
+                ));
+            }
+            for (String conceptId : conceptIds) {
+                SnapshotObjectRow concept = objectsById.get(conceptId);
+                if (concept == null || !"Conceito".equals(normalizedTypeName(concept.anytypeTypeName()))) {
+                    continue;
+                }
+                concepts++;
+                if (understandingRank(selectPropertyName(concept, "Entendimento").orElse("")) >= 2) {
+                    matureConcepts++;
+                }
+                if (isReadyCheckpointConcept(concept)) {
+                    readyConcepts++;
+                }
+            }
+
+            String topic = objectPropertyIds(checkpoint, "Tema").stream()
+                .findFirst()
+                .map(id -> namesByObjectId.getOrDefault(id, "Sem tema associado"))
+                .orElse("Sem tema associado");
+            progress.add(new DashboardDTO.CheckpointProgressDTO(
+                checkpoint.objectName(),
+                topic,
+                concepts,
+                matureConcepts,
+                percentage(matureConcepts, concepts),
+                readyConcepts,
+                percentage(readyConcepts, concepts),
+                checkpoint.lastModifiedDate()
+            ));
+        }
+
+        return progress.stream()
+            .sorted(Comparator.comparing(DashboardDTO.CheckpointProgressDTO::topic)
+                .thenComparing(DashboardDTO.CheckpointProgressDTO::name))
+            .toList();
+    }
+
+    private boolean isReadyCheckpointConcept(SnapshotObjectRow concept) {
+        String status = normalizeName(selectPropertyName(concept, "Status").orElse(""));
+        return "concluido".equals(status)
+            || "processando".equals(status)
+            || "para revisar".equals(status)
+            || "revisar".equals(status)
+            || "consolidando".equals(status);
+    }
+
+    private int percentage(int value, int total) {
+        return total == 0 ? 0 : Math.round((value * 100f) / total);
+    }
+
     private Map<String, TopicForecast> topicForecasts(
         List<SnapshotObjectRow> objects,
         Map<String, String> namesByObjectId
@@ -979,11 +1064,16 @@ public class DashboardGatewayImpl implements DashboardGateway {
             if (!properties.isArray()) {
                 return null;
             }
+            String normalizedPropertyName = normalizeName(propertyName);
             for (JsonNode property : properties) {
                 String name = property.path("name").asText("");
+                if (normalizedPropertyName.equals(normalizeName(name))) {
+                    return property;
+                }
+            }
+            for (JsonNode property : properties) {
                 String key = property.path("key").asText("");
-                if (normalizeName(propertyName).equals(normalizeName(name))
-                    || normalizeName(propertyName).equals(normalizeName(key))) {
+                if (normalizedPropertyName.equals(normalizeName(key))) {
                     return property;
                 }
             }

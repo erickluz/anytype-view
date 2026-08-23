@@ -10,6 +10,8 @@ async function getJson(url, options) {
 
 const PAGE_IDS = ['dashboard', 'checkpoints-page', 'topics-page', 'concepts-page', 'system-status'];
 const knowledgeViews = {};
+const CHECKPOINT_PROGRESS_PAGE_SIZE = 5;
+let checkpointProgressState = { items: [], page: 1, direction: 'desc' };
 let growthTrend = { month: [], day: [] };
 
 function applyTheme(theme) {
@@ -120,6 +122,7 @@ function renderDashboard(dashboard) {
     renderGrowthTrend();
     renderUnderstanding(dashboard.understanding);
     renderTopics(dashboard.topics);
+    renderCheckpointProgress(dashboard.checkpointProgress);
     renderCheckpoints(dashboard.checkpoints);
 }
 
@@ -282,6 +285,60 @@ function renderTopics(topics) {
 function renderTopicDetail(label, count, percent) {
     return `
         <span>${label} <strong>${percent}%</strong> <small>(${count})</small></span>
+    `;
+}
+
+function renderCheckpointProgress(checkpoints) {
+    checkpointProgressState = { items: checkpoints || [], page: 1, direction: checkpointProgressState.direction };
+    renderCheckpointProgressPage();
+}
+
+function renderCheckpointProgressPage() {
+    const sortBy = document.getElementById('checkpointProgressSort').value;
+    const direction = checkpointProgressState.direction === 'asc' ? 1 : -1;
+    const sorted = [...checkpointProgressState.items].sort((left, right) => {
+        const leftValue = sortBy === 'lastModifiedAt' ? Date.parse(left.lastModifiedAt || '') || 0 : left[sortBy];
+        const rightValue = sortBy === 'lastModifiedAt' ? Date.parse(right.lastModifiedAt || '') || 0 : right[sortBy];
+        const comparison = leftValue === rightValue
+            ? left.name.localeCompare(right.name, 'pt-BR')
+            : leftValue - rightValue;
+        return comparison * direction;
+    });
+    const totalPages = Math.max(1, Math.ceil(sorted.length / CHECKPOINT_PROGRESS_PAGE_SIZE));
+    checkpointProgressState.page = Math.min(Math.max(checkpointProgressState.page, 1), totalPages);
+    const start = (checkpointProgressState.page - 1) * CHECKPOINT_PROGRESS_PAGE_SIZE;
+    const pageItems = sorted.slice(start, start + CHECKPOINT_PROGRESS_PAGE_SIZE);
+
+    document.getElementById('checkpointProgressTable').innerHTML = pageItems.map(checkpoint => `
+        <div class="checkpoint-progress-row">
+            <div class="topic-name">
+                <strong>${checkpoint.name}</strong>
+                <span class="topic-meta">${checkpoint.topic} · ${checkpoint.concepts} conceitos</span>
+            </div>
+            <div class="checkpoint-progress-bars">
+                ${renderCheckpointProgressBar('Entendimento', checkpoint.maturityPercent, checkpoint.matureConcepts, checkpoint.concepts, 'em nível intermediário ou forte')}
+                ${renderCheckpointProgressBar('Concluídos ou para revisar', checkpoint.readyPercent, checkpoint.readyConcepts, checkpoint.concepts, 'com status concluído ou para revisar')}
+            </div>
+        </div>
+    `).join('');
+    document.getElementById('checkpointProgressResultCount').textContent = sorted.length === 0
+        ? 'Nenhum checkpoint disponível'
+        : `${start + 1}–${start + pageItems.length} de ${sorted.length} checkpoints`;
+    document.getElementById('checkpointProgressPage').textContent = `Página ${checkpointProgressState.page} de ${totalPages}`;
+    document.getElementById('checkpointProgressPrevious').disabled = checkpointProgressState.page === 1;
+    document.getElementById('checkpointProgressNext').disabled = checkpointProgressState.page === totalPages;
+}
+
+function renderCheckpointProgressBar(label, percent, count, total, context) {
+    return `
+        <div class="checkpoint-progress-bar">
+            <div class="d-flex justify-content-between gap-2">
+                <span class="topic-progress-label">${label}</span>
+                <strong>${percent}%</strong>
+            </div>
+            <div class="progress"><div class="progress-fill" style="width: ${percent}%;"></div></div>
+            <span class="topic-meta">${count} de ${total} ${context}</span>
+        </div>
     `;
 }
 
@@ -511,6 +568,28 @@ function activityAge(days) {
 document.getElementById('syncButton').addEventListener('click', runSync);
 document.getElementById('themeToggle').addEventListener('click', toggleTheme);
 document.getElementById('growthGranularity').addEventListener('change', renderGrowthTrend);
+document.getElementById('checkpointProgressSort').addEventListener('change', () => {
+    checkpointProgressState.page = 1;
+    renderCheckpointProgressPage();
+});
+document.querySelectorAll('[data-checkpoint-sort-direction]').forEach(button => button.addEventListener('click', () => {
+    checkpointProgressState.direction = button.dataset.checkpointSortDirection;
+    checkpointProgressState.page = 1;
+    document.querySelectorAll('[data-checkpoint-sort-direction]').forEach(directionButton => {
+        const active = directionButton === button;
+        directionButton.classList.toggle('active', active);
+        directionButton.setAttribute('aria-pressed', String(active));
+    });
+    renderCheckpointProgressPage();
+}));
+document.getElementById('checkpointProgressPrevious').addEventListener('click', () => {
+    checkpointProgressState.page--;
+    renderCheckpointProgressPage();
+});
+document.getElementById('checkpointProgressNext').addEventListener('click', () => {
+    checkpointProgressState.page++;
+    renderCheckpointProgressPage();
+});
 document.querySelectorAll('[data-page-link]').forEach(link => {
     link.addEventListener('click', event => {
         event.preventDefault();
