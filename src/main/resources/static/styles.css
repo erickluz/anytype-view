@@ -29,6 +29,12 @@ body {
     letter-spacing: -0.01em;
 }
 
+.dashboard-page-end {
+    border-top: 1px solid var(--av-border);
+    margin-top: 2rem;
+    padding-bottom: 3rem;
+}
+
 ::selection {
     background: #dfe3ff;
     color: #293785;
@@ -485,6 +491,61 @@ h1,
     padding: 1.5rem 0;
 }
 
+.activity-charts {
+    min-height: 17rem;
+}
+
+.activity-chart-panel {
+    min-height: 17rem;
+    min-width: 0;
+}
+
+.activity-chart-navigation {
+    align-items: center;
+    display: flex;
+    gap: 0.625rem;
+    min-width: 0;
+}
+
+.activity-chart-navigation > span {
+    text-align: right;
+}
+
+.activity-chart-controls {
+    display: flex;
+    flex: 0 0 auto;
+}
+
+.activity-chart-control {
+    align-items: center;
+    background: transparent;
+    border: 0;
+    border-radius: 0.375rem;
+    color: var(--cui-secondary-color);
+    display: inline-flex;
+    height: 1.75rem;
+    justify-content: center;
+    padding: 0;
+    transition: background-color 160ms ease, color 160ms ease;
+    width: 1.75rem;
+}
+
+.activity-chart-control:hover,
+.activity-chart-control:focus-visible {
+    background: var(--av-accent-soft);
+    color: var(--av-accent-strong);
+}
+
+.activity-chart-control svg {
+    fill: none;
+    height: 1.125rem;
+    stroke: currentColor;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-width: 2;
+    width: 1.125rem;
+}
+
 .activity-bars,
 .trend {
     align-items: end;
@@ -495,6 +556,68 @@ h1,
     min-height: 17rem;
     overflow-x: auto;
     padding-bottom: 0.25rem;
+}
+
+.activity-line-chart {
+    min-height: 17rem;
+    overflow: hidden;
+}
+
+.activity-line {
+    display: block;
+    height: 100%;
+    min-height: 17rem;
+    overflow: visible;
+    width: 100%;
+}
+
+.activity-line-guide {
+    stroke: var(--av-border);
+    stroke-dasharray: 3 4;
+}
+
+.activity-line-month-band {
+    fill: rgb(139 156 255 / 5%);
+}
+
+.activity-line-month-divider {
+    stroke: var(--av-border);
+    stroke-width: 1.25;
+}
+
+.activity-line-axis {
+    fill: var(--cui-secondary-color);
+    font-size: 11px;
+}
+
+.activity-line-month-label {
+    fill: var(--av-muted);
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.activity-line-area {
+    fill: var(--av-accent-soft);
+}
+
+.activity-line-path {
+    fill: none;
+    stroke: var(--av-accent);
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-width: 3;
+}
+
+.activity-line-point {
+    fill: var(--av-accent-strong);
+    opacity: 0;
+    transition: opacity 120ms ease, r 120ms ease;
+}
+
+.activity-line-point:hover,
+.activity-line-point:focus-visible {
+    opacity: 1;
+    r: 4;
 }
 
 .bar-group {
@@ -1195,4 +1318,5 @@ h1,
 @media (max-width: 575.98px) {
     .theme-toggle-label { display: none; }
     .theme-toggle { padding: 0.5rem 0.625rem; }
+    .activity-chart-navigation > span { display: none; }
 }

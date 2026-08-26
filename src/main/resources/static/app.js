@@ -16,6 +16,7 @@ let checkpointProgressState = { items: [], page: 1, direction: 'desc' };
 let growthTrend = { month: [], day: [] };
 let topicProgressViews = { micro: [], macro: [] };
 let topicProgressState = { items: [], page: 1, direction: 'desc' };
+let activityChartView = 'recent';
 
 function applyTheme(theme) {
     const isDark = theme === 'dark';
@@ -117,6 +118,8 @@ function renderDashboard(dashboard) {
     renderSummary(dashboard.summary);
     renderBars('activityBars', dashboard.activity, '#2563eb');
     renderActivityHistory(dashboard.activityHistory || []);
+    renderActivitySixMonths(dashboard.activityHistory || []);
+    renderActivityChartView();
     growthTrend = {
         month: dashboard.conceptTrend || [],
         day: dashboard.conceptTrendDaily || []
@@ -133,6 +136,20 @@ function renderDashboard(dashboard) {
     renderTopicProgressView();
     renderCheckpointProgress(dashboard.checkpointProgress);
     renderCheckpoints(dashboard.checkpoints);
+}
+
+function changeActivityChart(direction) {
+    activityChartView = activityChartView === 'recent' ? 'six-months' : 'recent';
+    renderActivityChartView();
+}
+
+function renderActivityChartView() {
+    const showingRecent = activityChartView === 'recent';
+    document.getElementById('activityRecentPanel').hidden = !showingRecent;
+    document.getElementById('activitySixMonthsPanel').hidden = showingRecent;
+    document.getElementById('activityChartCaption').textContent = showingRecent
+        ? 'alterações inferidas nos últimos 7 dias'
+        : 'alterações inferidas nos últimos 6 meses';
 }
 
 function renderGrowthTrend() {
@@ -242,6 +259,72 @@ function renderBars(elementId, points, color) {
             </div>
         `;
     }).join('');
+}
+
+function renderActivitySixMonths(points) {
+    const container = document.getElementById('activitySixMonths');
+    const latestDate = points.at(-1) ? new Date(`${points.at(-1).date}T00:00:00`) : null;
+    const startDate = latestDate ? new Date(latestDate) : null;
+    startDate?.setMonth(startDate.getMonth() - 6);
+    const sixMonthsOfActivity = startDate
+        ? points.filter(point => new Date(`${point.date}T00:00:00`) >= startDate)
+        : [];
+    if (!sixMonthsOfActivity.length) {
+        container.innerHTML = '<p class="text-body-secondary mb-0">Ainda não há histórico de atividade.</p>';
+        return;
+    }
+
+    const width = 640;
+    const height = 220;
+    const padding = { top: 16, right: 12, bottom: 32, left: 30 };
+    const max = Math.max(...sixMonthsOfActivity.map(point => point.value), 1);
+    const plotWidth = width - padding.left - padding.right;
+    const plotHeight = height - padding.top - padding.bottom;
+    const xFor = index => padding.left + (index / Math.max(sixMonthsOfActivity.length - 1, 1)) * plotWidth;
+    const yFor = value => padding.top + plotHeight - (value / max) * plotHeight;
+    const pointsAttribute = sixMonthsOfActivity
+        .map((point, index) => `${xFor(index).toFixed(2)},${yFor(point.value).toFixed(2)}`)
+        .join(' ');
+    const areaPath = `M ${xFor(0).toFixed(2)} ${height - padding.bottom} L ${pointsAttribute.replaceAll(' ', ' L ')} L ${xFor(sixMonthsOfActivity.length - 1).toFixed(2)} ${height - padding.bottom} Z`;
+    const monthLabels = sixMonthsOfActivity.reduce((labels, point, index) => {
+        const date = new Date(`${point.date}T00:00:00`);
+        const previous = index > 0 ? new Date(`${sixMonthsOfActivity[index - 1].date}T00:00:00`) : null;
+        if (!previous || date.getMonth() !== previous.getMonth()) {
+            labels.push({ index, label: date.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '') });
+        }
+        return labels;
+    }, []);
+    const guides = [0, Math.round(max / 2), max].map(value => {
+        const y = yFor(value).toFixed(2);
+        return `<g><line class="activity-line-guide" x1="${padding.left}" x2="${width - padding.right}" y1="${y}" y2="${y}"></line><text class="activity-line-axis" x="0" y="${Number(y) + 4}">${value}</text></g>`;
+    }).join('');
+    const monthRegions = monthLabels.map(({ index }, monthIndex) => {
+        const startX = xFor(index);
+        const endX = monthIndex < monthLabels.length - 1
+            ? xFor(monthLabels[monthIndex + 1].index)
+            : width - padding.right;
+        const divider = monthIndex === 0
+            ? ''
+            : `<line class="activity-line-month-divider" x1="${startX.toFixed(2)}" x2="${startX.toFixed(2)}" y1="${padding.top}" y2="${height - padding.bottom}"></line>`;
+        const band = monthIndex % 2 === 0
+            ? `<rect class="activity-line-month-band" x="${startX.toFixed(2)}" y="${padding.top}" width="${(endX - startX).toFixed(2)}" height="${plotHeight}"></rect>`
+            : '';
+        return `${band}${divider}`;
+    }).join('');
+    const labels = monthLabels.map(({ index, label }, monthIndex) => {
+        const startX = xFor(index);
+        const endX = monthIndex < monthLabels.length - 1
+            ? xFor(monthLabels[monthIndex + 1].index)
+            : width - padding.right;
+        return `<text class="activity-line-month-label" text-anchor="middle" x="${((startX + endX) / 2).toFixed(2)}" y="${height - 7}">${label}</text>`;
+    }).join('');
+    const dots = sixMonthsOfActivity.map((point, index) => {
+        const date = new Date(`${point.date}T00:00:00`).toLocaleDateString('pt-BR');
+        const count = point.value;
+        return `<circle class="activity-line-point" cx="${xFor(index).toFixed(2)}" cy="${yFor(count).toFixed(2)}" r="2.4"><title>${date}: ${count} ${count === 1 ? 'alteração inferida' : 'alterações inferidas'}</title></circle>`;
+    }).join('');
+
+    container.innerHTML = `<svg class="activity-line" viewBox="0 0 ${width} ${height}" role="img" aria-label="Atividade inferida diária dos últimos seis meses, de 0 a ${max} alterações por dia">${monthRegions}${guides}<path class="activity-line-area" d="${areaPath}"></path><polyline class="activity-line-path" points="${pointsAttribute}"></polyline>${dots}${labels}</svg>`;
 }
 
 function renderUnderstanding(items) {
@@ -671,6 +754,8 @@ document.getElementById('topicProgressNext').addEventListener('click', () => {
     topicProgressState.page++;
     renderTopicProgressPage();
 });
+document.getElementById('activityChartPrevious').addEventListener('click', () => changeActivityChart('previous'));
+document.getElementById('activityChartNext').addEventListener('click', () => changeActivityChart('next'));
 document.querySelectorAll('[data-page-link]').forEach(link => {
     link.addEventListener('click', event => {
         event.preventDefault();

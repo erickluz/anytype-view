@@ -104,12 +104,29 @@
             <section class="row g-4 mb-4">
                 <div class="col-12 col-xl-8">
                     <div class="card h-100">
-                        <div class="card-header d-flex align-items-center justify-content-between">
+                        <div class="card-header d-flex align-items-center justify-content-between gap-2">
                             <strong>Ritmo e continuidade</strong>
-                            <span class="small text-body-secondary">alterações inferidas nos últimos 7 dias</span>
+                            <div class="activity-chart-navigation">
+                                <span class="small text-body-secondary" id="activityChartCaption" aria-live="polite">alterações inferidas nos últimos 7 dias</span>
+                                <div class="activity-chart-controls" aria-label="Escolher gráfico de atividade">
+                                    <button class="activity-chart-control" id="activityChartPrevious" type="button" aria-label="Exibir gráfico anterior" title="Gráfico anterior">
+                                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14 6-6 6 6 6"/></svg>
+                                    </button>
+                                    <button class="activity-chart-control" id="activityChartNext" type="button" aria-label="Exibir próximo gráfico" title="Próximo gráfico">
+                                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m10 6 6 6-6 6"/></svg>
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                         <div class="card-body">
-                            <div class="activity-bars" id="activityBars"></div>
+                            <div class="activity-charts">
+                                <section class="activity-chart-panel" id="activityRecentPanel" aria-label="Alterações inferidas nos últimos 7 dias">
+                                    <div class="activity-bars" id="activityBars"></div>
+                                </section>
+                                <section class="activity-chart-panel" id="activitySixMonthsPanel" aria-label="Alterações inferidas nos últimos seis meses" hidden>
+                                    <div class="activity-line-chart" id="activitySixMonths" aria-label="Linha de alterações inferidas nos últimos seis meses"></div>
+                                </section>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -243,6 +260,8 @@
                     </div>
                 </div>
             </section>
+
+            <div class="dashboard-page-end" aria-hidden="true"></div>
         </div>
 
         <div class="container-xl px-4 page-section d-none" id="checkpoints-page">
