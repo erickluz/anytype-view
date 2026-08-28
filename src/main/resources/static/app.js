@@ -508,7 +508,7 @@ function renderCheckpoints(checkpoints) {
         <div class="checkpoint-item">
             <div>
                 <strong>${checkpoint.topic}</strong>
-                <span>Trabalhado em ${checkpoint.workedAt} · ${checkpoint.perceivedLevel} · há ${checkpoint.age}</span>
+                <span>Última atividade em ${checkpoint.workedAt} · ${checkpoint.perceivedLevel} · há ${checkpoint.age}</span>
             </div>
             <div class="checkpoint-score">
                 <span>Vendabilidade</span>

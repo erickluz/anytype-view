@@ -12,6 +12,7 @@ import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.time.format.TextStyle;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -30,6 +31,7 @@ import org.springframework.stereotype.Component;
 public class DashboardGatewayImpl implements DashboardGateway {
 
     private static final ZoneId DASHBOARD_ZONE = ZoneId.of("America/Sao_Paulo");
+    private static final Locale BRAZILIAN_PORTUGUESE = Locale.forLanguageTag("pt-BR");
     private static final DateTimeFormatter SHORT_DATE = DateTimeFormatter.ofPattern("dd/MM");
     private static final DateTimeFormatter DAILY_TREND_DATE = DateTimeFormatter.ofPattern("dd/MM/yy");
 
@@ -493,8 +495,13 @@ public class DashboardGatewayImpl implements DashboardGateway {
         );
 
         return counts.entrySet().stream()
-            .map(entry -> new DashboardDTO.ActivityPointDTO(entry.getKey().format(SHORT_DATE), entry.getValue()))
+            .map(entry -> new DashboardDTO.ActivityPointDTO(activityLabel(entry.getKey()), entry.getValue()))
             .toList();
+    }
+
+    private String activityLabel(LocalDate date) {
+        String weekday = date.getDayOfWeek().getDisplayName(TextStyle.SHORT, BRAZILIAN_PORTUGUESE);
+        return weekday.substring(0, 1).toUpperCase(BRAZILIAN_PORTUGUESE) + weekday.substring(1) + " · " + date.format(SHORT_DATE);
     }
 
     private List<DashboardDTO.DailyActivityDTO> activityHistory() {
@@ -1060,6 +1067,7 @@ public class DashboardGatewayImpl implements DashboardGateway {
     ) {
         List<DashboardDTO.CheckpointDTO> checkpoints = new ArrayList<>();
         LocalDate today = LocalDate.now(DASHBOARD_ZONE);
+        Map<String, LocalDate> latestConceptActivityByCheckpoint = latestConceptActivityByCheckpoint(objects);
 
         for (SnapshotObjectRow object : objects) {
             if (!"Checkpoint de Conhecimento".equals(normalizedTypeName(object.anytypeTypeName()))) {
@@ -1070,8 +1078,12 @@ public class DashboardGatewayImpl implements DashboardGateway {
                 .findFirst()
                 .map(id -> namesByObjectId.getOrDefault(id, object.objectName()))
                 .orElse(object.objectName());
-            Optional<LocalDate> workedDate = checkpointWorkDate(object);
-            long age = workedDate
+            Optional<LocalDate> activityDate = checkpointWorkDate(object);
+            LocalDate relatedConceptActivity = latestConceptActivityByCheckpoint.get(object.anytypeObjectId());
+            if (relatedConceptActivity != null && activityDate.map(relatedConceptActivity::isAfter).orElse(true)) {
+                activityDate = Optional.of(relatedConceptActivity);
+            }
+            long age = activityDate
                 .map(date -> ChronoUnit.DAYS.between(date, today))
                 .orElse(0L);
             String level = selectPropertyName(object, "Nivel Percebido").orElse("-");
@@ -1080,7 +1092,7 @@ public class DashboardGatewayImpl implements DashboardGateway {
             checkpoints.add(new DashboardDTO.CheckpointDTO(
                 topic,
                 age + " dias",
-                workedDate.map(date -> date.format(SHORT_DATE)).orElse("-"),
+                activityDate.map(date -> date.format(SHORT_DATE)).orElse("-"),
                 level,
                 sellability
             ));
@@ -1090,6 +1102,43 @@ public class DashboardGatewayImpl implements DashboardGateway {
             .sorted(Comparator.comparingInt((DashboardDTO.CheckpointDTO checkpoint) -> parseDays(checkpoint.age())))
             .limit(3)
             .toList();
+    }
+
+    private Map<String, LocalDate> latestConceptActivityByCheckpoint(List<SnapshotObjectRow> objects) {
+        Map<String, Set<String>> checkpointIdsByConceptId = new HashMap<>();
+        for (SnapshotObjectRow object : objects) {
+            if (!"Checkpoint de Conhecimento".equals(normalizedTypeName(object.anytypeTypeName()))) {
+                continue;
+            }
+            for (String conceptId : objectPropertyIds(object, "Conecta com")) {
+                checkpointIdsByConceptId
+                    .computeIfAbsent(conceptId, ignored -> new LinkedHashSet<>())
+                    .add(object.anytypeObjectId());
+            }
+        }
+
+        Map<String, LocalDate> latestActivityByCheckpoint = new HashMap<>();
+        for (SnapshotObjectRow object : objects) {
+            if (!"Conceito".equals(normalizedTypeName(object.anytypeTypeName()))) {
+                continue;
+            }
+            Optional<LocalDate> modifiedDate = parseAnytypeDate(object.lastModifiedDate());
+            if (modifiedDate.isEmpty()) {
+                continue;
+            }
+
+            Set<String> checkpointIds = new LinkedHashSet<>(checkpointIdsByConceptId
+                .getOrDefault(object.anytypeObjectId(), Set.of()));
+            checkpointIds.addAll(objectPropertyIds(object, "Checkpoint"));
+            for (String checkpointId : checkpointIds) {
+                latestActivityByCheckpoint.merge(
+                    checkpointId,
+                    modifiedDate.get(),
+                    (current, candidate) -> candidate.isAfter(current) ? candidate : current
+                );
+            }
+        }
+        return latestActivityByCheckpoint;
     }
 
     private Optional<LocalDate> checkpointWorkDate(SnapshotObjectRow object) {
