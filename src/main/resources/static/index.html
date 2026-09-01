@@ -93,10 +93,14 @@
                 <div class="card contribution-card">
                     <div class="card-header d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-1">
                         <strong>Consistência ao longo do tempo</strong>
-                        <span class="small text-body-secondary">atividade inferida nos últimos 12 meses</span>
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="small text-body-secondary">atividade inferida nos últimos 12 meses</span>
+                            <button id="addPauseNoteButton" class="btn btn-outline-secondary btn-sm" type="button">Registrar pausa</button>
+                        </div>
                     </div>
                     <div class="card-body">
                         <div class="contribution-chart" id="activityHistory" aria-label="Mapa anual de atividade inferida"></div>
+                        <div class="pause-note-list" id="pauseNoteList" aria-live="polite"></div>
                     </div>
                 </div>
             </section>
@@ -399,7 +403,31 @@
                 </div>
             </div>
         </div>
-    </main>
+</main>
+
+<dialog class="pause-note-dialog" id="pauseNoteDialog" aria-labelledby="pauseNoteDialogTitle">
+    <form id="pauseNoteForm" method="dialog">
+        <div class="pause-note-dialog-header">
+            <div>
+                <h2 class="h5 mb-1" id="pauseNoteDialogTitle">Registrar período sem estudo</h2>
+                <p class="text-body-secondary small mb-0">A anotação fica somente neste painel local e aparece nos gráficos de atividade.</p>
+            </div>
+            <button class="btn-close" type="button" id="closePauseNoteDialog" aria-label="Fechar"></button>
+        </div>
+        <div class="pause-note-dialog-body">
+            <div class="row g-3">
+                <label class="col-12 col-sm-6 form-label">Início<input class="form-control mt-1" id="pauseStartDate" type="date" required></label>
+                <label class="col-12 col-sm-6 form-label">Fim<input class="form-control mt-1" id="pauseEndDate" type="date" required></label>
+                <label class="col-12 form-label">Justificativa<textarea class="form-control mt-1" id="pauseReason" rows="3" maxlength="500" required placeholder="Ex.: viagem, prazo no trabalho, questões pessoais"></textarea></label>
+            </div>
+            <p class="small text-danger mt-3 mb-0" id="pauseNoteError" role="alert"></p>
+        </div>
+        <div class="pause-note-dialog-footer">
+            <button class="btn btn-outline-secondary" type="button" id="cancelPauseNote">Cancelar</button>
+            <button class="btn btn-primary" id="savePauseNoteButton" type="submit">Salvar anotação</button>
+        </div>
+    </form>
+</dialog>
 
     <div class="toast-container position-fixed top-0 end-0 p-3">
         <div id="syncToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">

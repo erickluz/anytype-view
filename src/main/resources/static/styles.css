@@ -561,6 +561,7 @@ h1,
 .activity-line-chart {
     min-height: 17rem;
     overflow: hidden;
+    position: relative;
 }
 
 .activity-line {
@@ -583,6 +584,41 @@ h1,
 .activity-line-month-divider {
     stroke: var(--av-border);
     stroke-width: 1.25;
+}
+
+.activity-pause-band rect {
+    fill: rgb(245 158 11 / 14%);
+    cursor: help;
+}
+
+.activity-pause-band line {
+    stroke: #d97706;
+    stroke-dasharray: 4 3;
+    stroke-width: 1.5;
+    pointer-events: none;
+}
+
+.activity-pause-band:focus-visible rect {
+    stroke: #fbbf24;
+    stroke-width: 2;
+}
+
+.activity-pause-tooltip {
+    background: #101828;
+    border: 1px solid rgb(255 255 255 / 18%);
+    border-radius: 0.375rem;
+    box-shadow: 0 8px 22px rgb(0 0 0 / 22%);
+    color: #f8fafc;
+    font-size: 0.75rem;
+    left: 50%;
+    line-height: 1.35;
+    max-width: min(18rem, calc(100% - 1rem));
+    padding: 0.5rem 0.625rem;
+    pointer-events: none;
+    position: absolute;
+    top: 0.5rem;
+    transform: translateX(-50%);
+    z-index: 2;
 }
 
 .activity-line-axis {
@@ -618,6 +654,129 @@ h1,
 .activity-line-point:focus-visible {
     opacity: 1;
     r: 4;
+}
+
+.pause-note-list {
+    border-top: 1px solid var(--av-border);
+    display: grid;
+    gap: 0.5rem;
+    margin-top: 1.25rem;
+    padding-top: 1rem;
+}
+
+.pause-note-list-title {
+    color: var(--cui-secondary-color);
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.pause-note-item {
+    align-items: center;
+    display: flex;
+    gap: 1rem;
+    justify-content: space-between;
+}
+
+.pause-note-item div {
+    display: grid;
+    gap: 0.125rem;
+}
+
+.pause-note-item span {
+    color: var(--cui-secondary-color);
+    font-size: 0.875rem;
+}
+
+.pause-note-actions {
+    display: flex;
+    flex: 0 0 auto;
+    gap: 0.25rem;
+}
+
+.pause-note-icon-button {
+    align-items: center;
+    background: transparent;
+    border: 0;
+    border-radius: 0.375rem;
+    color: var(--cui-secondary-color);
+    display: inline-flex;
+    height: 2rem;
+    justify-content: center;
+    padding: 0;
+    width: 2rem;
+}
+
+.pause-note-icon-button:hover,
+.pause-note-icon-button:focus-visible {
+    background: var(--av-accent-soft);
+    color: var(--av-accent-strong);
+}
+
+.pause-note-icon-button svg {
+    fill: none;
+    height: 1rem;
+    stroke: currentColor;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-width: 1.8;
+    width: 1rem;
+}
+
+.contribution-day-noted {
+    box-shadow: 0 0 0 2px #f59e0b;
+    position: relative;
+}
+
+.pause-note-dialog {
+    background: var(--cui-body-bg);
+    border: 1px solid var(--av-border);
+    border-radius: 0.75rem;
+    color: var(--cui-body-color);
+    max-width: min(34rem, calc(100% - 2rem));
+    padding: 0;
+    width: 100%;
+}
+
+:root[data-theme="dark"] .pause-note-dialog .form-control {
+    background-color: #1d2433;
+    border-color: #4b5870;
+    color: #f4f6ff;
+}
+
+:root[data-theme="dark"] .pause-note-dialog .form-control:focus {
+    background-color: #222b3d;
+    border-color: #91a0ed;
+}
+
+:root[data-theme="dark"] .pause-note-dialog .form-control::placeholder {
+    color: #aeb8cb;
+}
+
+.pause-note-dialog::backdrop {
+    background: rgb(9 11 18 / 55%);
+}
+
+.pause-note-dialog-header,
+.pause-note-dialog-footer {
+    align-items: center;
+    display: flex;
+    gap: 1rem;
+    justify-content: space-between;
+    padding: 1rem 1.25rem;
+}
+
+.pause-note-dialog-header {
+    border-bottom: 1px solid var(--av-border);
+}
+
+.pause-note-dialog-body {
+    padding: 1.25rem;
+}
+
+.pause-note-dialog-footer {
+    border-top: 1px solid var(--av-border);
+    justify-content: flex-end;
 }
 
 .bar-group {

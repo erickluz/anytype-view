@@ -17,6 +17,8 @@ let growthTrend = { month: [], day: [] };
 let topicProgressViews = { micro: [], macro: [] };
 let topicProgressState = { items: [], page: 1, direction: 'desc' };
 let activityChartView = 'recent';
+let studyPauseNotes = [];
+let editingPauseNoteId = null;
 
 function applyTheme(theme) {
     const isDark = theme === 'dark';
@@ -37,16 +39,18 @@ function toggleTheme() {
 }
 
 async function loadStatus() {
-    const [health, anytype, dashboard] = await Promise.all([
+    const [health, anytype, dashboard, pauseNotes] = await Promise.all([
         getJson('/api/health'),
         getJson('/api/anytype/status'),
-        getJson('/api/dashboard/preview')
+        getJson('/api/dashboard/preview'),
+        getJson('/api/study-pause-notes')
     ]);
 
     document.getElementById('healthStatus').textContent = health.status;
     document.getElementById('spaceName').textContent = anytype.spaceName;
     document.getElementById('configuredSpaceName').textContent = anytype.spaceName;
     document.getElementById('apiKeyStatus').textContent = anytype.apiKeyConfigured ? 'Configurada' : 'Nao configurada';
+    studyPauseNotes = pauseNotes;
     renderDashboard(dashboard);
 }
 
@@ -117,8 +121,9 @@ function renderDashboard(dashboard) {
     renderProblemIndicators(dashboard.problemIndicators || []);
     renderSummary(dashboard.summary);
     renderBars('activityBars', dashboard.activity, '#2563eb');
-    renderActivityHistory(dashboard.activityHistory || []);
-    renderActivitySixMonths(dashboard.activityHistory || []);
+    renderActivityHistory(dashboard.activityHistory || [], studyPauseNotes);
+    renderActivitySixMonths(dashboard.activityHistory || [], studyPauseNotes);
+    renderPauseNoteList(studyPauseNotes);
     renderActivityChartView();
     growthTrend = {
         month: dashboard.conceptTrend || [],
@@ -157,7 +162,21 @@ function renderGrowthTrend() {
     renderBars('conceptTrend', growthTrend[granularity], '#0f766e');
 }
 
-function renderActivityHistory(points) {
+function escapeHtml(value) {
+    return String(value).replace(/[&<>'"]/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' })[character]);
+}
+
+function formatPausePeriod(note) {
+    const start = new Date(`${note.startDate}T00:00:00`).toLocaleDateString('pt-BR');
+    const end = new Date(`${note.endDate}T00:00:00`).toLocaleDateString('pt-BR');
+    return note.startDate === note.endDate ? start : `${start} a ${end}`;
+}
+
+function pauseNotesForDate(notes, date) {
+    return notes.filter(note => note.startDate <= date && note.endDate >= date);
+}
+
+function renderActivityHistory(points, pauseNotes) {
     const container = document.getElementById('activityHistory');
     if (!points.length) {
         container.innerHTML = '<p class="text-body-secondary mb-0">Ainda não há histórico de atividade.</p>';
@@ -187,7 +206,9 @@ function renderActivityHistory(points) {
         }
         const label = date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
         const count = point.value;
-        return `<span class="contribution-day contribution-level-${levelFor(count)}" tabindex="0" data-tooltip="${label}: ${count} ${count === 1 ? 'alteração inferida' : 'alterações inferidas'}" aria-label="${label}: ${count} alterações inferidas"></span>`;
+        const notes = pauseNotesForDate(pauseNotes, point.date);
+        const noteText = notes.length ? ` · pausa: ${notes.map(note => note.reason).join(' / ')}` : '';
+        return `<span class="contribution-day contribution-level-${levelFor(count)}${notes.length ? ' contribution-day-noted' : ''}" tabindex="0" data-tooltip="${escapeHtml(`${label}: ${count} ${count === 1 ? 'alteração inferida' : 'alterações inferidas'}${noteText}`)}" aria-label="${escapeHtml(`${label}: ${count} alterações inferidas${noteText}`)}"></span>`;
     }).join('')}</div>`).join('');
 
     const labels = monthLabels.map(item => `<span style="grid-column: ${item.week + 1}">${item.label}</span>`).join('');
@@ -261,7 +282,7 @@ function renderBars(elementId, points, color) {
     }).join('');
 }
 
-function renderActivitySixMonths(points) {
+function renderActivitySixMonths(points, pauseNotes) {
     const container = document.getElementById('activitySixMonths');
     const latestDate = points.at(-1) ? new Date(`${points.at(-1).date}T00:00:00`) : null;
     const startDate = latestDate ? new Date(latestDate) : null;
@@ -318,13 +339,100 @@ function renderActivitySixMonths(points) {
             : width - padding.right;
         return `<text class="activity-line-month-label" text-anchor="middle" x="${((startX + endX) / 2).toFixed(2)}" y="${height - 7}">${label}</text>`;
     }).join('');
+    const pauseBands = pauseNotes.map(note => {
+        const startIndex = sixMonthsOfActivity.findIndex(point => point.date >= note.startDate);
+        const endIndex = sixMonthsOfActivity.findLastIndex(point => point.date <= note.endDate);
+        if (startIndex < 0 || endIndex < 0 || startIndex > endIndex) return '';
+        const startX = xFor(startIndex);
+        const endX = xFor(endIndex);
+        const label = `${formatPausePeriod(note)}: ${note.reason}`;
+        return `<g class="activity-pause-band" tabindex="0" role="img" aria-label="${escapeHtml(label)}" data-pause-tooltip="${escapeHtml(label)}"><rect x="${startX.toFixed(2)}" y="${padding.top}" width="${Math.max(endX - startX, 3).toFixed(2)}" height="${plotHeight}"></rect><line x1="${startX.toFixed(2)}" x2="${startX.toFixed(2)}" y1="${padding.top}" y2="${height - padding.bottom}"></line></g>`;
+    }).join('');
     const dots = sixMonthsOfActivity.map((point, index) => {
         const date = new Date(`${point.date}T00:00:00`).toLocaleDateString('pt-BR');
         const count = point.value;
         return `<circle class="activity-line-point" cx="${xFor(index).toFixed(2)}" cy="${yFor(count).toFixed(2)}" r="2.4"><title>${date}: ${count} ${count === 1 ? 'alteração inferida' : 'alterações inferidas'}</title></circle>`;
     }).join('');
 
-    container.innerHTML = `<svg class="activity-line" viewBox="0 0 ${width} ${height}" role="img" aria-label="Atividade inferida diária dos últimos seis meses, de 0 a ${max} alterações por dia">${monthRegions}${guides}<path class="activity-line-area" d="${areaPath}"></path><polyline class="activity-line-path" points="${pointsAttribute}"></polyline>${dots}${labels}</svg>`;
+    container.innerHTML = `<svg class="activity-line" viewBox="0 0 ${width} ${height}" role="img" aria-label="Atividade inferida diária dos últimos seis meses, de 0 a ${max} alterações por dia">${monthRegions}${guides}${pauseBands}<path class="activity-line-area" d="${areaPath}"></path><polyline class="activity-line-path" points="${pointsAttribute}"></polyline>${dots}${labels}</svg><div class="activity-pause-tooltip" role="tooltip" hidden></div>`;
+    const tooltip = container.querySelector('.activity-pause-tooltip');
+    const showTooltip = (target, clientX) => {
+        tooltip.textContent = target.dataset.pauseTooltip;
+        tooltip.hidden = false;
+        const bounds = container.getBoundingClientRect();
+        const desiredLeft = Number.isFinite(clientX) ? clientX - bounds.left : bounds.width / 2;
+        tooltip.style.left = `${Math.max(8, Math.min(desiredLeft, bounds.width - 8))}px`;
+    };
+    container.querySelectorAll('[data-pause-tooltip]').forEach(band => {
+        band.addEventListener('mouseenter', event => showTooltip(band, event.clientX));
+        band.addEventListener('mousemove', event => showTooltip(band, event.clientX));
+        band.addEventListener('mouseleave', () => { tooltip.hidden = true; });
+        band.addEventListener('focus', () => showTooltip(band));
+        band.addEventListener('blur', () => { tooltip.hidden = true; });
+    });
+}
+
+function renderPauseNoteList(notes) {
+    const container = document.getElementById('pauseNoteList');
+    const visibleNotes = notes.slice(0, 4);
+    container.innerHTML = visibleNotes.length ? `<div class="pause-note-list-title">Pausas anotadas</div>${visibleNotes.map(note => `
+        <article class="pause-note-item"><div><strong>${escapeHtml(formatPausePeriod(note))}</strong><span>${escapeHtml(note.reason)}</span></div><div class="pause-note-actions"><button class="pause-note-icon-button" type="button" data-edit-pause-note="${note.id}" aria-label="Editar anotação de ${escapeHtml(formatPausePeriod(note))}" title="Editar anotação"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14.7 5.3 4 4M4 20l4.2-1 10.5-10.5a2.8 2.8 0 0 0-4-4L4.2 15z"/></svg></button><button class="pause-note-icon-button" type="button" data-delete-pause-note="${note.id}" aria-label="Excluir anotação de ${escapeHtml(formatPausePeriod(note))}" title="Excluir anotação"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M10 11v5M14 11v5M9 7l1-2h4l1 2m-9 0 1 13h10l1-13"/></svg></button></div></article>
+    `).join('')}` : '';
+    container.querySelectorAll('[data-edit-pause-note]').forEach(button => button.addEventListener('click', () => openPauseNoteDialog(studyPauseNotes.find(note => note.id === button.dataset.editPauseNote))));
+    container.querySelectorAll('[data-delete-pause-note]').forEach(button => button.addEventListener('click', () => deletePauseNote(button.dataset.deletePauseNote)));
+}
+
+function openPauseNoteDialog(note = null) {
+    const dialog = document.getElementById('pauseNoteDialog');
+    document.getElementById('pauseNoteError').textContent = '';
+    editingPauseNoteId = note?.id || null;
+    document.getElementById('pauseNoteDialogTitle').textContent = note ? 'Editar período sem estudo' : 'Registrar período sem estudo';
+    document.getElementById('savePauseNoteButton').textContent = note ? 'Salvar alterações' : 'Salvar anotação';
+    if (note) {
+        document.getElementById('pauseStartDate').value = note.startDate;
+        document.getElementById('pauseEndDate').value = note.endDate;
+        document.getElementById('pauseReason').value = note.reason;
+    } else {
+        document.getElementById('pauseNoteForm').reset();
+        const now = new Date();
+        const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+        document.getElementById('pauseStartDate').value = today;
+        document.getElementById('pauseEndDate').value = today;
+    }
+    dialog.showModal();
+}
+
+async function savePauseNote(event) {
+    event.preventDefault();
+    const error = document.getElementById('pauseNoteError');
+    const startDate = document.getElementById('pauseStartDate').value;
+    const endDate = document.getElementById('pauseEndDate').value;
+    const reason = document.getElementById('pauseReason').value.trim();
+    if (endDate < startDate) {
+        error.textContent = 'A data final deve ser igual ou posterior à data inicial.';
+        return;
+    }
+    try {
+        const method = editingPauseNoteId ? 'PUT' : 'POST';
+        const url = editingPauseNoteId ? `/api/study-pause-notes/${editingPauseNoteId}` : '/api/study-pause-notes';
+        const note = await getJson(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ startDate, endDate, reason }) });
+        studyPauseNotes = editingPauseNoteId
+            ? studyPauseNotes.map(existingNote => existingNote.id === note.id ? note : existingNote)
+            : [note, ...studyPauseNotes];
+        document.getElementById('pauseNoteDialog').close();
+        document.getElementById('pauseNoteForm').reset();
+        renderDashboard(await getJson('/api/dashboard/preview'));
+        showSyncToast(editingPauseNoteId ? 'Pausa atualizada' : 'Pausa anotada', 'A justificativa foi adicionada aos gráficos de atividade.', 'success');
+        editingPauseNoteId = null;
+    } catch (saveError) {
+        error.textContent = saveError.message;
+    }
+}
+
+async function deletePauseNote(id) {
+    await getJson(`/api/study-pause-notes/${id}`, { method: 'DELETE' });
+    studyPauseNotes = studyPauseNotes.filter(note => note.id !== id);
+    renderDashboard(await getJson('/api/dashboard/preview'));
 }
 
 function renderUnderstanding(items) {
@@ -756,6 +864,10 @@ document.getElementById('topicProgressNext').addEventListener('click', () => {
 });
 document.getElementById('activityChartPrevious').addEventListener('click', () => changeActivityChart('previous'));
 document.getElementById('activityChartNext').addEventListener('click', () => changeActivityChart('next'));
+document.getElementById('addPauseNoteButton').addEventListener('click', openPauseNoteDialog);
+document.getElementById('pauseNoteForm').addEventListener('submit', savePauseNote);
+document.getElementById('closePauseNoteDialog').addEventListener('click', () => document.getElementById('pauseNoteDialog').close());
+document.getElementById('cancelPauseNote').addEventListener('click', () => document.getElementById('pauseNoteDialog').close());
 document.querySelectorAll('[data-page-link]').forEach(link => {
     link.addEventListener('click', event => {
         event.preventDefault();

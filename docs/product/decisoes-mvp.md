@@ -77,6 +77,8 @@ O histórico mínimo pode conter:
 - hash das propriedades relevantes;
 - propriedades relevantes para métricas, em formato normalizado ou JSON reduzido.
 
+Além dos dados observados, o sistema pode guardar anotações locais de interrupções de estudo. Cada anotação contém data inicial, data final e justificativa curta. Essas anotações não alteram nem complementam os dados de conhecimento do Anytype: servem apenas como contexto visual para os gráficos de atividade.
+
 ## Estratégia de Cálculo
 
 O estado atual deve ser calculado preferencialmente em memória:
@@ -207,6 +209,7 @@ As métricas iniciais devem responder aos problemas de progresso, ritmo, interru
 - duração média das interrupções;
 - maior interrupção;
 - data da última retomada após interrupção.
+- anotações locais opcionais que explicam períodos de interrupção, exibidas sobre os gráficos de atividade.
 
 ### Progresso por Entendimento
 
